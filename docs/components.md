@@ -7,15 +7,15 @@ comment is the one in the source, so the two cannot drift.
 ### Button
 
 A tappable action. `variant` is how much ink it uses (solid, outline, ghost, link),
-`action` what it means (primary, secondary, positive, negative), `size` sm | md | lg.
-`loading` swaps the icon for a spinner and blocks taps; `disabled` dims and blocks.
-One element to a screen reader: "<label>, button", dimmed when disabled.
+ `action` what it means (primary, secondary, positive, negative), `size` sm | md | lg.
+ `loading` swaps the icon for a spinner and blocks taps; `disabled` dims and blocks.
+ One element to a screen reader: "<label>, button", dimmed when disabled.
 
-```chuks
-Button({ label: "Save", onPress: save })
-Button({ label: "Delete", action: "negative", variant: "outline", onPress: remove })
-Button({ label: "Sending", loading: sending.get(), onPress: send })
-```
+ ```chuks
+ Button({ label: "Save", onPress: save })
+ Button({ label: "Delete", action: "negative", variant: "outline", onPress: remove })
+ Button({ label: "Sending", loading: sending.get(), onPress: send })
+ ```
 
 ```chuks
 export dataType ButtonProps {
@@ -38,11 +38,11 @@ export dataType ButtonProps {
 ### IconButton
 
 A button that is only a glyph. `a11yLabel` is required: the glyph says nothing to a
-screen reader. Round by default.
+ screen reader. Round by default.
 
-```chuks
-IconButton({ icon: lucide("x", 18, tk("text")), a11yLabel: "Close", onPress: close })
-```
+ ```chuks
+ IconButton({ icon: lucide("x", 18, tk("text")), a11yLabel: "Close", onPress: close })
+ ```
 
 ```chuks
 export dataType IconButtonProps {
@@ -61,11 +61,11 @@ export dataType IconButtonProps {
 ### Link
 
 Inline text that goes somewhere. Underlined in the action colour; a screen reader
-calls it a link.
+ calls it a link.
 
-```chuks
-Link({ text: "Terms of service", onPress: function(): void { openUrl(terms) } })
-```
+ ```chuks
+ Link({ text: "Terms of service", onPress: function(): void { openUrl(terms) } })
+ ```
 
 ```chuks
 export dataType LinkProps {
@@ -80,11 +80,11 @@ export dataType LinkProps {
 ### Fab
 
 A floating action button: the screen's one main action, pinned to a corner of its
-parent. Give the parent `grow: 1` so the corner is the screen's.
+ parent. Give the parent `grow: 1` so the corner is the screen's.
 
-```chuks
-Fab({ icon: lucide("plus", 24, tk("primaryText")), a11yLabel: "New post", onPress: compose })
-```
+ ```chuks
+ Fab({ icon: lucide("plus", 24, tk("primaryText")), a11yLabel: "New post", onPress: compose })
+ ```
 
 ```chuks
 export dataType FabProps {
@@ -104,11 +104,11 @@ export dataType FabProps {
 ### Card
 
 A surface that groups content. `variant`: "elevated" (default: a border and a soft
-shadow), "outline", "filled" (a tinted fill, no border), "ghost" (padding only).
+ shadow), "outline", "filled" (a tinted fill, no border), "ghost" (padding only).
 
-```chuks
-Card({ children: [ Heading({ text: "Today" }), Text({}, "3 walks") ] })
-```
+ ```chuks
+ Card({ children: [ Heading({ text: "Today" }), Text({}, "3 walks") ] })
+ ```
 
 ```chuks
 export dataType CardProps {
@@ -123,7 +123,7 @@ export dataType CardProps {
 ### Heading
 
 A heading. `size`: "xs" | "sm" | "md" (default) | "lg" | "xl". A screen reader
-jumps between headings, so use one for every section title.
+ jumps between headings, so use one for every section title.
 
 ```chuks
 export dataType HeadingProps {
@@ -133,33 +133,33 @@ export dataType HeadingProps {
 }
 ```
 
-### Badge
+### SectionHeader
 
 A small, quiet label above a group of rows. A header to a screen reader.
 
 ```chuks
 export dataType SectionHeaderProps { text: string, extra: string? }
-/** A small, quiet label above a group of rows. A header to a screen reader. */
-export function SectionHeader(p: SectionHeaderProps): Node {
-    return Text({ tw: "text-xs font-bold text-subtle uppercase tracking-wide p-sm " + (p.extra ?? ""), a11yRole: "header" }, p.text)
-}
+```
 
+### Divider
+
+A hairline. `vertical: true` for a column separator inside a Row. Decoration to a screen reader.
+
+```chuks
 export dataType DividerProps { vertical: bool?, extra: string? }
-/** A hairline. `vertical: true` for a column separator inside a Row. Decoration to a screen reader. */
-export function Divider(p: DividerProps): Node {
-    if (p.vertical ?? false) { return Row({ tw: "w-1 bg-borderSoft self-stretch " + (p.extra ?? ""), a11yHidden: true }, []) }
-    return Row({ tw: "h-1 bg-borderSoft " + (p.extra ?? ""), a11yHidden: true }, [])
-}
+```
 
-/**
- * A small status label. `action` colours it; `variant`: "soft" (default: a tint),
- * "solid", "outline".
- *
- * ```chuks
- * Badge({ text: "Live", action: "positive" })
- * Badge({ text: "3", variant: "solid" })
- * ```
- */
+### Badge
+
+A small status label. `action` colours it; `variant`: "soft" (default: a tint),
+ "solid", "outline".
+
+ ```chuks
+ Badge({ text: "Live", action: "positive" })
+ Badge({ text: "3", variant: "solid" })
+ ```
+
+```chuks
 export dataType BadgeProps {
     text: string,
     action: string?,
@@ -172,7 +172,7 @@ export dataType BadgeProps {
 ### Chip
 
 A selectable pill (filters, tags). The parent owns `selected`. A button to a screen
-reader that says whether it is selected.
+ reader that says whether it is selected.
 
 ```chuks
 export dataType ChipProps {
@@ -188,7 +188,7 @@ export dataType ChipProps {
 ### Avatar
 
 A round picture or initials. `src` shows the image; without it the `initials` show
-on a tinted disc. `size`: "sm" (32) | "md" (40, default) | "lg" (56) | "xl" (80).
+ on a tinted disc. `size`: "sm" (32) | "md" (40, default) | "lg" (56) | "xl" (80).
 
 ```chuks
 export dataType AvatarProps {
@@ -203,8 +203,8 @@ export dataType AvatarProps {
 ### Skeleton
 
 The grey shape a card or row shows while its data loads; it pulses on the native
-driver. Call it inside a `Comp` (it holds animation state). Hidden from screen
-readers: the real content will speak for itself.
+ driver. Call it inside a `Comp` (it holds animation state). Hidden from screen
+ readers: the real content will speak for itself.
 
 ```chuks
 export dataType SkeletonProps {
@@ -220,12 +220,12 @@ export dataType SkeletonProps {
 ### Input
 
 A text field. `value` is yours; `onChange` gives you the new text on each edit.
-`invalid` reddens the border (FormControl sets it from its `error`).
+ `invalid` reddens the border (FormControl sets it from its `error`).
 
-```chuks
-Input({ value: email.get(), placeholder: "you@example.com", keyboardType: "email",
-        onChange: function(v: string): void { email.set(v) } })
-```
+ ```chuks
+ Input({ value: email.get(), placeholder: "you@example.com", keyboardType: "email",
+         onChange: function(v: string): void { email.set(v) } })
+ ```
 
 ```chuks
 export dataType InputProps {
@@ -253,14 +253,14 @@ export dataType InputProps {
 ### FormControl
 
 A label, a field, and the line under it: a helper by default, the error when there
-is one. The field is any node; an `Input` inside takes `invalid` from `error` when
-you pass it. Required fields carry an asterisk.
+ is one. The field is any node; an `Input` inside takes `invalid` from `error` when
+ you pass it. Required fields carry an asterisk.
 
-```chuks
-FormControl({ label: "Email", required: true, error: emailError.get(),
-              helper: "We never share it",
-              field: Input({ value: email.get(), invalid: emailError.get() != "", onChange: setEmail }) })
-```
+ ```chuks
+ FormControl({ label: "Email", required: true, error: emailError.get(),
+               helper: "We never share it",
+               field: Input({ value: email.get(), invalid: emailError.get() != "", onChange: setEmail }) })
+ ```
 
 ```chuks
 export dataType FormControlProps {
@@ -276,11 +276,11 @@ export dataType FormControlProps {
 ### Checkbox
 
 A box with a label. The parent owns `checked`; `onChange` reports the flip. A
-screen reader hears "<label>, checkbox, checked".
+ screen reader hears "<label>, checkbox, checked".
 
-```chuks
-Checkbox({ label: "I agree", checked: ok.get(), onChange: function(v: bool): void { ok.set(v) } })
-```
+ ```chuks
+ Checkbox({ label: "I agree", checked: ok.get(), onChange: function(v: bool): void { ok.set(v) } })
+ ```
 
 ```chuks
 export dataType CheckboxProps {
@@ -297,12 +297,12 @@ export dataType CheckboxProps {
 ### RadioGroup
 
 One choice out of a list, as a column of radios. The parent owns `selected` (an
-index; -1 = none); `onSelect` reports a tap. Each radio says "checked" or not.
+ index; -1 = none); `onSelect` reports a tap. Each radio says "checked" or not.
 
-```chuks
-RadioGroup({ options: ["Card", "Cash"], selected: pay.get(),
-             onSelect: function(i: int): void { pay.set(i) } })
-```
+ ```chuks
+ RadioGroup({ options: ["Card", "Cash"], selected: pay.get(),
+              onSelect: function(i: int): void { pay.set(i) } })
+ ```
 
 ```chuks
 export dataType RadioGroupProps {
@@ -319,8 +319,8 @@ export dataType RadioGroupProps {
 ### Switch
 
 The native on/off switch, tinted with the theme. Controlled: `on` is yours,
-`onToggle` fires on a flip. Give it a `label` and the row is one element that says
-"<label>, switch, on".
+ `onToggle` fires on a flip. Give it a `label` and the row is one element that says
+ "<label>, switch, on".
 
 ```chuks
 export dataType SwitchProps {
@@ -335,7 +335,7 @@ export dataType SwitchProps {
 ### Stepper
 
 A number with minus and plus. Clamped to `min`/`max`, so the caller never has to
-re-check what it hands back. The glyph buttons are named for a screen reader.
+ re-check what it hands back. The glyph buttons are named for a screen reader.
 
 ```chuks
 export dataType StepperProps {
@@ -351,7 +351,7 @@ export dataType StepperProps {
 ### SearchBar
 
 A search field with a leading icon slot and a clear button that appears once there
-is text. Icon-agnostic: pass the glyph as a node.
+ is text. Icon-agnostic: pass the glyph as a node.
 
 ```chuks
 export dataType SearchBarProps {
@@ -368,8 +368,8 @@ export dataType SearchBarProps {
 ### SegmentedControl
 
 One choice out of a few, as a row of segments. Composed rather than the native
-control, which themes poorly and differs in metrics across platforms. Each segment
-is a tab to a screen reader.
+ control, which themes poorly and differs in metrics across platforms. Each segment
+ is a tab to a screen reader.
 
 ```chuks
 export dataType SegmentedControlProps {
@@ -383,12 +383,12 @@ export dataType SegmentedControlProps {
 ### Tabs
 
 Tabs with an underline, and the selected tab's panel under them when `panels` is
-given (one node per tab, built lazily by index). The parent owns `selected`.
+ given (one node per tab, built lazily by index). The parent owns `selected`.
 
-```chuks
-Tabs({ tabs: ["Posts", "Likes"], selected: tab.get(), onSelect: function(i: int): void { tab.set(i) },
-       panel: function(i: int): Node { return i == 0 ? Posts() : Likes() } })
-```
+ ```chuks
+ Tabs({ tabs: ["Posts", "Likes"], selected: tab.get(), onSelect: function(i: int): void { tab.set(i) },
+        panel: function(i: int): Node { return i == 0 ? Posts() : Likes() } })
+ ```
 
 ```chuks
 export dataType TabsProps {
@@ -406,13 +406,13 @@ export dataType TabsProps {
 ### Alert
 
 An inline banner: a message with a meaning. `action` colours it (positive for
-success, negative for an error, primary for information, secondary for a note);
-`variant`: "soft" (default) or "solid". Announced when it appears.
+ success, negative for an error, primary for information, secondary for a note);
+ `variant`: "soft" (default) or "solid". Announced when it appears.
 
-```chuks
-Alert({ title: "Saved", body: "Your changes are live.", action: "positive" })
-Alert({ title: "No connection", action: "negative", onClose: dismiss })
-```
+ ```chuks
+ Alert({ title: "Saved", body: "Your changes are live.", action: "positive" })
+ Alert({ title: "No connection", action: "negative", onClose: dismiss })
+ ```
 
 ```chuks
 export dataType AlertProps {
@@ -429,7 +429,7 @@ export dataType AlertProps {
 ### EmptyState
 
 What a screen shows when it has nothing to show: an icon slot, a headline, a line
-of explanation, and an optional action.
+ of explanation, and an optional action.
 
 ```chuks
 export dataType EmptyStateProps {
@@ -445,11 +445,17 @@ export dataType EmptyStateProps {
 
 Show a short message. Safe to call from any closure; messages queue.
 
-```chuks
-export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any }
-var TOASTS: []ToastItem = []
-var TOAST_MS: int = 2600
+### toastWith
 
+A toast with a meaning, a title, or a button: `action` colours the edge (positive,
+ negative, primary, secondary), `actionLabel` + `onAction` add a tappable word
+ ("Undo").
+
+ ```chuks
+ toastWith({ message: "Post deleted", actionLabel: "Undo", onAction: restore, action: "negative" })
+ ```
+
+```chuks
 export dataType ToastOptions {
     message: string,
     title: string?,
@@ -459,16 +465,6 @@ export dataType ToastOptions {
 }
 ```
 
-### toastWith
-
-A toast with a meaning, a title, or a button: `action` colours the edge (positive,
-negative, primary, secondary), `actionLabel` + `onAction` add a tappable word
-("Undo").
-
-```chuks
-toastWith({ message: "Post deleted", actionLabel: "Undo", onAction: restore, action: "negative" })
-```
-
 ### setToastDuration
 
 How long each message stays up, in milliseconds (default 2600).
@@ -476,20 +472,20 @@ How long each message stays up, in milliseconds (default 2600).
 ### ToastHost
 
 The surface toasts appear on. Mount once in the app shell; renders nothing when
- there is no message. Each toast is a polite live region.
+  there is no message. Each toast is a polite live region.
 
 ## Overlays
 
 ### Tooltip
 
 A short line anchored to a view, on a dark pill with a pointer. `anchor` is the
-useViewRef() handle the anchored view carries as `ref`.
+ useViewRef() handle the anchored view carries as `ref`.
 
-```chuks
-const info: ViewRef = useViewRef()
-IconButton({ ref: info, icon: lucide("info", 16, tk("muted")), a11yLabel: "About this", onPress: function(): void { tip.set(true) } })
-Tooltip({ text: "Sent once a day", anchor: info, visible: tip.get(), onDismiss: function(): void { tip.set(false) } })
-```
+ ```chuks
+ const info: ViewRef = useViewRef()
+ IconButton({ ref: info, icon: lucide("info", 16, tk("muted")), a11yLabel: "About this", onPress: function(): void { tip.set(true) } })
+ Tooltip({ text: "Sent once a day", anchor: info, visible: tip.get(), onDismiss: function(): void { tip.set(false) } })
+ ```
 
 ```chuks
 export dataType TooltipProps {
@@ -504,15 +500,15 @@ export dataType TooltipProps {
 ### AlertDialog
 
 A themed confirm dialog: a title, a line, and two buttons. Unlike the framework's
-native `Alert`, it looks like the rest of the app. `action` colours the confirm
-button (negative for a destructive choice). Cancel, the scrim and Android back all
-fire `onCancel`.
+ native `Alert`, it looks like the rest of the app. `action` colours the confirm
+ button (negative for a destructive choice). Cancel, the scrim and Android back all
+ fire `onCancel`.
 
-```chuks
-AlertDialog({ visible: ask.get(), title: "Delete post?", body: "This cannot be undone.",
-              confirmText: "Delete", action: "negative",
-              onConfirm: remove, onCancel: function(): void { ask.set(false) } })
-```
+ ```chuks
+ AlertDialog({ visible: ask.get(), title: "Delete post?", body: "This cannot be undone.",
+               confirmText: "Delete", action: "negative",
+               onConfirm: remove, onCancel: function(): void { ask.set(false) } })
+ ```
 
 ```chuks
 export dataType AlertDialogProps {
@@ -530,14 +526,14 @@ export dataType AlertDialogProps {
 ### ActionSheet
 
 A sheet of choices from the bottom. `onSelect` reports the tapped index; the
-`destructive` index is red. The scrim, a swipe down, Android back and the cancel
-row all fire `onDismiss`.
+ `destructive` index is red. The scrim, a swipe down, Android back and the cancel
+ row all fire `onDismiss`.
 
-```chuks
-ActionSheet({ visible: menu.get(), title: "Photo", items: ["Save", "Share", "Delete"], destructive: 2,
-              onSelect: function(i: int): void { menu.set(false); act(i) },
-              onDismiss: function(): void { menu.set(false) } })
-```
+ ```chuks
+ ActionSheet({ visible: menu.get(), title: "Photo", items: ["Save", "Share", "Delete"], destructive: 2,
+               onSelect: function(i: int): void { menu.set(false); act(i) },
+               onDismiss: function(): void { menu.set(false) } })
+ ```
 
 ```chuks
 export dataType ActionSheetProps {
@@ -554,12 +550,12 @@ export dataType ActionSheetProps {
 ### Drawer
 
 A panel that slides in from a side, over a scrim. `side`: "left" (default) or
-"right"; `width` defaults to 300. Tapping the scrim, Android back, fire `onDismiss`.
+ "right"; `width` defaults to 300. Tapping the scrim, Android back, fire `onDismiss`.
 
-```chuks
-Drawer({ visible: nav.get(), onDismiss: function(): void { nav.set(false) },
-         children: [ Heading({ text: "Menu" }), ListItem({ title: "Settings", onPress: openSettings }) ] })
-```
+ ```chuks
+ Drawer({ visible: nav.get(), onDismiss: function(): void { nav.set(false) },
+          children: [ Heading({ text: "Menu" }), ListItem({ title: "Settings", onPress: openSettings }) ] })
+ ```
 
 ```chuks
 export dataType DrawerProps {
@@ -586,32 +582,12 @@ export dataType ImageViewerProps {
 
 ## Data display
 
-### Accordion
+### ListItem
 
-A titled row that expands to reveal its children. The open state stays with the
-caller, so a set of them can be driven together or independently. The header says
-expanded or collapsed.
+A row with a title, an optional subtitle, and a trailing text or node. Tappable when
+ `onPress` is passed, and then one button to a screen reader.
 
 ```chuks
-export dataType ListItemProps {
-    title: string,
-    subtitle: string?,
-    trailing: string?,
-    trailingNode: Node?,
-    leading: Node?,
-    onPress: function?(): void,
-    extra: string?,
-}
-export dataType CarouselProps {
-    children: []Node,
-    page: int,
-    onPage: function?(i: int): void,
-    h: int,
-    itemWidth: int?,                // page width; defaults to the viewport width
-    dots: bool?,                    // default true
-    extra: string?,
-}
-const DOTS_H: int = 20
 export dataType MonthViewProps {
     year: int,
     month: int,
@@ -621,23 +597,15 @@ export dataType MonthViewProps {
     sundayFirst: bool?,
     extra: string?,
 }
-const MONTHS: []string = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-/**
- * A row with a title, an optional subtitle, and a trailing text or node. Tappable when
- * `onPress` is passed, and then one button to a screen reader.
- */
-export function ListItem(p: ListItemProps): Node {
-    var kids: []Node = []
-    if (p.leading != null) { kids.push(p.leading) }
-    var textKids: []Node = [ Text({ tw: "text-base font-semibold text-text" }, p.title) ]
-    if (p.subtitle != null) { textKids.push(Text({ tw: "text-sm text-muted" }, p.subtitle)) }
-    kids.push(Column({ tw: "grow gap-xs", justify: "start", align: "start" }, textKids))
-    if (p.trailing != null) { kids.push(Text({ tw: "text-sm text-subtle" }, p.trailing)) }
-    if (p.trailingNode != null) { kids.push(p.trailingNode) }
-    return Row({ tw: "items-center gap-md p-md bg-surface rounded-lg " + (p.extra ?? ""), onPress: p.onPress,
-                 a11yRole: p.onPress != null ? "button" : "" }, kids)
-}
+```
 
+### Accordion
+
+A titled row that expands to reveal its children. The open state stays with the
+ caller, so a set of them can be driven together or independently. The header says
+ expanded or collapsed.
+
+```chuks
 export dataType AccordionProps {
     title: string,
     open: bool,
@@ -650,12 +618,12 @@ export dataType AccordionProps {
 ### Table
 
 A grid of text. `columns` are the headers, `rows` the cells; `widths` fixes column
-widths in points (omit for equal shares). Long tables scroll sideways when wider
-than the screen.
+ widths in points (omit for equal shares). Long tables scroll sideways when wider
+ than the screen.
 
-```chuks
-Table({ columns: ["Day", "Steps"], rows: [["Mon", "8,412"], ["Tue", "10,003"]] })
-```
+ ```chuks
+ Table({ columns: ["Day", "Steps"], rows: [["Mon", "8,412"], ["Tue", "10,003"]] })
+ ```
 
 ```chuks
 export dataType TableProps {
@@ -670,16 +638,16 @@ export dataType TableProps {
 ### Carousel
 
 A paged horizontal strip with page dots. One child per page; each fills the
-carousel's width. `page` is yours to hold.
+ carousel's width. `page` is yours to hold.
 
 ### MonthView
 
 A month. `year`/`month` (1-12) say which; `selected` is an ISO date ("2026-09-13")
-or ""; `onSelect` gets the tapped day's ISO date; `onMonth` gets the month the
-arrows move to. Weeks start on Monday unless `sundayFirst`.
+ or ""; `onSelect` gets the tapped day's ISO date; `onMonth` gets the month the
+ arrows move to. Weeks start on Monday unless `sundayFirst`.
 
-```chuks
-MonthView({ year: 2026, month: 9, selected: day.get(),
-           onSelect: function(iso: string): void { day.set(iso) },
-           onMonth: function(y: int, m: int): void { ym.set(string(y) + "-" + string(m)) } })
-```
+ ```chuks
+ MonthView({ year: 2026, month: 9, selected: day.get(),
+            onSelect: function(iso: string): void { day.set(iso) },
+            onMonth: function(y: int, m: int): void { ym.set(string(y) + "-" + string(m)) } })
+ ```

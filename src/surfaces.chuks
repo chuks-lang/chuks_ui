@@ -60,6 +60,13 @@ export function Divider(p: DividerProps): Node {
     return Row({ tw: "h-1 bg-borderSoft " + (p.extra ?? ""), a11yHidden: true }, [])
 }
 
+export dataType BadgeProps {
+    text: string,
+    action: string?,
+    variant: string?,
+    size: string?,
+    extra: string?,
+}
 /**
  * A small status label. `action` colours it; `variant`: "soft" (default: a tint),
  * "solid", "outline".
@@ -69,14 +76,6 @@ export function Divider(p: DividerProps): Node {
  * Badge({ text: "3", variant: "solid" })
  * ```
  */
-export dataType BadgeProps {
-    text: string,
-    action: string?,
-    variant: string?,
-    size: string?,
-    extra: string?,
-}
-/** A small, quiet label above a group of rows. A header to a screen reader. */
 export function Badge(p: BadgeProps): Node {
     const i: InkClasses = ink(p.action ?? "secondary", p.variant ?? "soft")
     const sm: bool = (p.size ?? "sm") == "sm"

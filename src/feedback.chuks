@@ -72,6 +72,9 @@ export dataType ToastItem { message: string; title: string; action: string; acti
 var TOASTS: []ToastItem = []
 var TOAST_MS: int = 2600
 
+/** Show a short message. Safe to call from any closure; messages queue. */
+export function toast(message: string): void { toastWith({ message: message }) }
+
 export dataType ToastOptions {
     message: string,
     title: string?,
@@ -79,9 +82,6 @@ export dataType ToastOptions {
     actionLabel: string?,
     onAction: function?(): void,
 }
-/** Show a short message. Safe to call from any closure; messages queue. */
-export function toast(message: string): void { toastWith({ message: message }) }
-
 /**
  * A toast with a meaning, a title, or a button: `action` colours the edge (positive,
  * negative, primary, secondary), `actionLabel` + `onAction` add a tappable word
