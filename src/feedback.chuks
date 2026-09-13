@@ -1,0 +1,144 @@
+// Feedback: banners, toasts, empty states.
+import { Node, Row, Column, Text, requestRender } from "pkg/@chuks/mobile/core/ui.chuks";
+import { time } from "std/time";
+import { InkClasses, ink, actionColor, call0 } from "./tokens.chuks";
+
+export dataType AlertProps {
+    title: string,
+    body: string?,
+    action: string?,
+    variant: string?,
+    icon: Node?,
+    onClose: function?(): void,
+    extra: string?,
+}
+/**
+ * An inline banner: a message with a meaning. `action` colours it (positive for
+ * success, negative for an error, primary for information, secondary for a note);
+ * `variant`: "soft" (default) or "solid". Announced when it appears.
+ *
+ * ```chuks
+ * Alert({ title: "Saved", body: "Your changes are live.", action: "positive" })
+ * Alert({ title: "No connection", action: "negative", onClose: dismiss })
+ * ```
+ */
+export function Alert(p: AlertProps): Node {
+    const action: string = p.action ?? "primary"
+    const i: InkClasses = ink(action, p.variant ?? "soft")
+    const solid: bool = (p.variant ?? "soft") == "solid"
+    const textCls: string = solid ? i.text : "text-text"
+    var textKids: []Node = [ Text({ tw: "text-base font-semibold " + textCls }, p.title) ]
+    if (p.body != null) { textKids.push(Text({ tw: "text-sm " + (solid ? i.text : "text-muted") }, p.body)) }
+    var kids: []Node = []
+    if (p.icon != null) { kids.push(p.icon) }
+    kids.push(Column({ tw: "grow gap-xs", justify: "start", align: "start" }, textKids))
+    if (p.onClose != null) {
+        kids.push(Row({ w: 28, h: 28, tw: "items-center justify-center rounded-full", onPress: p.onClose, a11yRole: "button", a11yLabel: "Dismiss" },
+            [ Text({ tw: "text-sm " + textCls }, "✕") ]))
+    }
+    return Row({ tw: "items-start gap-md p-md rounded-lg " + i.box + " " + (p.extra ?? ""), a11yRole: "alert", a11yLive: "polite" }, kids)
+}
+
+export dataType EmptyStateProps {
+    title: string,
+    body: string?,
+    icon: Node?,
+    action: Node?,
+    extra: string?,
+}
+/**
+ * What a screen shows when it has nothing to show: an icon slot, a headline, a line
+ * of explanation, and an optional action.
+ */
+export function EmptyState(p: EmptyStateProps): Node {
+    var kids: []Node = []
+    if (p.icon != null) { kids.push(Column({ tw: "w-16 h-16 items-center justify-center rounded-2xl bg-surface2" }, [ p.icon ])) }
+    kids.push(Text({ tw: "text-lg font-bold text-text text-center", a11yRole: "header" }, p.title))
+    if (p.body != null) { kids.push(Text({ tw: "text-sm text-muted text-center" }, p.body)) }
+    if (p.action != null) { kids.push(p.action) }
+    return Column({ tw: "items-center justify-center gap-md p-xl " + (p.extra ?? "") }, kids)
+}
+
+// ---------------------------------------------------------------------------
+// Toast: a short message that appears over the app and goes away on its own.
+//
+// Two pieces, because a toast outlives the screen that raised it: `toast(msg)` can be
+// called from anywhere (an event closure, a failed request), and `ToastHost()` is
+// mounted ONCE by the app shell, near the bottom of the tree so it draws over the
+// rest. Messages queue rather than overlap. The dismiss timer runs on a coroutine, not
+// on the render loop.
+// ---------------------------------------------------------------------------
+export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any }
+var TOASTS: []ToastItem = []
+var TOAST_MS: int = 2600
+
+export dataType ToastOptions {
+    message: string,
+    title: string?,
+    action: string?,
+    actionLabel: string?,
+    onAction: function?(): void,
+}
+/** Show a short message. Safe to call from any closure; messages queue. */
+export function toast(message: string): void { toastWith({ message: message }) }
+
+/**
+ * A toast with a meaning, a title, or a button: `action` colours the edge (positive,
+ * negative, primary, secondary), `actionLabel` + `onAction` add a tappable word
+ * ("Undo").
+ *
+ * ```chuks
+ * toastWith({ message: "Post deleted", actionLabel: "Undo", onAction: restore, action: "negative" })
+ * ```
+ */
+export function toastWith(o: ToastOptions): void {
+    TOASTS.push({ message: o.message, title: o.title ?? "", action: o.action ?? "secondary", actionLabel: o.actionLabel ?? "", onAction: o.onAction })
+    requestRender()
+    spawn expireToast()
+}
+/** How long each message stays up, in milliseconds (default 2600). */
+export function setToastDuration(ms: int): void { TOAST_MS = ms }
+
+// One coroutine per message: sleep this message's turn, then drop the oldest and ask
+// for a render. Draining by index would race with a toast raised mid-sleep. The
+// package imports std/time for this, which is the one permission it asks an app to
+// consent to when it is added (chuks add reviews it, and records it in chuks.lock).
+async function expireToast(): Task<void> {
+    time.sleep(TOAST_MS)
+    if (TOASTS.length > 0) {
+        var rest: []ToastItem = []
+        for (var i: int = 1; i < TOASTS.length; i = i + 1) { rest.push(TOASTS[i]) }
+        TOASTS = rest
+        requestRender()
+    }
+}
+function dropToast(idx: int): void {
+    var rest: []ToastItem = []
+    for (var i: int = 0; i < TOASTS.length; i = i + 1) { if (i != idx) { rest.push(TOASTS[i]) } }
+    TOASTS = rest
+    requestRender()
+}
+
+/** The surface toasts appear on. Mount once in the app shell; renders nothing when
+ *  there is no message. Each toast is a polite live region. */
+export function ToastHost(): Node {
+    if (TOASTS.length == 0) { return Column({ tw: "h-0" }, []) }
+    var kids: []Node = []
+    for (var i: int = 0; i < TOASTS.length && i < 3; i = i + 1) { kids.push(toastRow(TOASTS[i], i)) }
+    return Column({ tw: "items-center gap-xs px-lg pb-md" }, kids)
+}
+function toastRow(t: ToastItem, idx: int): Node {
+    var textKids: []Node = []
+    if (t.title != "") { textKids.push(Text({ tw: "text-sm font-semibold text-text" }, t.title)) }
+    textKids.push(Text({ tw: "text-sm text-text", a11yLive: "polite" }, t.message))
+    var kids: []Node = [
+        Row({ w: 4, tw: "self-stretch rounded-full", bg: t.action == "secondary" ? "" : actionColor(t.action), a11yHidden: true }, []),
+        Column({ tw: "grow gap-xs", justify: "start", align: "start" }, textKids),
+    ]
+    if (t.actionLabel != "") {
+        const cb: any = t.onAction
+        kids.push(Text({ tw: "text-sm font-bold text-primary px-sm", a11yRole: "button",
+                         onPress: function(): void { call0(cb); dropToast(idx) } }, t.actionLabel))
+    }
+    return Row({ tw: "items-center gap-md pl-sm pr-md py-md rounded-xl bg-elevated border border-border shadow-sm", w: 340 }, kids)
+}

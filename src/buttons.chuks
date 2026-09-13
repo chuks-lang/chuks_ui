@@ -1,0 +1,130 @@
+// Buttons and links.
+import { Node, Row, Text, Pressable, Spinner, ViewRef } from "pkg/@chuks/mobile/core/ui.chuks";
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+import { InkClasses, ink, sizePad, sizeText, sizeHeight, sizeIcon, actionRoles, call0 } from "./tokens.chuks";
+
+export dataType ButtonProps {
+    label: string,
+    onPress: function?(): void,
+    variant: string?,               // "solid" (default) | "outline" | "ghost" | "link"
+    action: string?,                // "primary" (default) | "secondary" | "positive" | "negative"
+    size: string?,                  // "sm" | "md" (default) | "lg"
+    icon: Node?,                    // a glyph before the label
+    iconRight: Node?,               // a glyph after it
+    loading: bool?,
+    disabled: bool?,
+    full: bool?,                    // stretch to the parent's width
+    ref: ViewRef?,                  // to anchor a Popover to this button
+    a11yLabel: string?,
+    extra: string?,
+}
+/**
+ * A tappable action. `variant` is how much ink it uses (solid, outline, ghost, link),
+ * `action` what it means (primary, secondary, positive, negative), `size` sm | md | lg.
+ * `loading` swaps the icon for a spinner and blocks taps; `disabled` dims and blocks.
+ * One element to a screen reader: "<label>, button", dimmed when disabled.
+ *
+ * ```chuks
+ * Button({ label: "Save", onPress: save })
+ * Button({ label: "Delete", action: "negative", variant: "outline", onPress: remove })
+ * Button({ label: "Sending", loading: sending.get(), onPress: send })
+ * ```
+ */
+export function Button(p: ButtonProps): Node {
+    const variant: string = p.variant ?? "solid"
+    const action: string = p.action ?? "primary"
+    const size: string = p.size ?? "md"
+    const off: bool = (p.disabled ?? false) || (p.loading ?? false)
+    const i: InkClasses = ink(action, variant)
+    var kids: []Node = []
+    if (p.loading ?? false) { kids.push(Spinner({ w: sizeIcon(size), h: sizeIcon(size), color: variant == "solid" ? tk(actionRoles(action).onFill) : tk(actionRoles(action).fill) })) }
+    else if (p.icon != null) { kids.push(p.icon) }
+    kids.push(Text({ tw: sizeText(size) + " font-semibold " + i.text }, p.label))
+    if (p.iconRight != null) { kids.push(p.iconRight) }
+    const pad: string = variant == "link" ? "" : sizePad(size)
+    return Pressable({ tw: "flex-row items-center justify-center gap-sm rounded-lg " + pad + " " + i.box + " " + ((p.full ?? false) ? "grow " : "") + (p.extra ?? ""),
+                       h: variant == "link" ? -1 : sizeHeight(size),
+                       activeOpacity: 70, disabled: off, ref: p.ref,
+                       a11yRole: "button", a11yLabel: p.a11yLabel ?? "", a11yState: { disabled: off, busy: p.loading ?? false },
+                       onPress: off ? null : p.onPress }, kids)
+}
+
+export dataType IconButtonProps {
+    icon: Node,
+    a11yLabel: string,
+    onPress: function?(): void,
+    variant: string?,               // "ghost" (default) | "solid" | "outline" | "soft"
+    action: string?,
+    size: string?,
+    disabled: bool?,
+    ref: ViewRef?,
+    extra: string?,
+}
+/**
+ * A button that is only a glyph. `a11yLabel` is required: the glyph says nothing to a
+ * screen reader. Round by default.
+ *
+ * ```chuks
+ * IconButton({ icon: lucide("x", 18, tk("text")), a11yLabel: "Close", onPress: close })
+ * ```
+ */
+export function IconButton(p: IconButtonProps): Node {
+    const size: string = p.size ?? "md"
+    const off: bool = p.disabled ?? false
+    const i: InkClasses = ink(p.action ?? "primary", p.variant ?? "ghost")
+    const d: int = sizeHeight(size)
+    return Pressable({ tw: "items-center justify-center rounded-full " + i.box + " " + (p.extra ?? ""), w: d, h: d,
+                       activeOpacity: 70, disabled: off, ref: p.ref,
+                       a11yRole: "button", a11yLabel: p.a11yLabel, a11yState: { disabled: off },
+                       onPress: off ? null : p.onPress }, [ p.icon ])
+}
+
+export dataType LinkProps {
+    text: string,
+    onPress: function?(): void,
+    action: string?,
+    size: string?,
+    extra: string?,
+}
+/**
+ * Inline text that goes somewhere. Underlined in the action colour; a screen reader
+ * calls it a link.
+ *
+ * ```chuks
+ * Link({ text: "Terms of service", onPress: function(): void { openUrl(terms) } })
+ * ```
+ */
+export function Link(p: LinkProps): Node {
+    const i: InkClasses = ink(p.action ?? "primary", "link")
+    return Text({ tw: sizeText(p.size ?? "md") + " " + i.text + " " + (p.extra ?? ""), a11yRole: "link", onPress: p.onPress }, p.text)
+}
+
+export dataType FabProps {
+    icon: Node,
+    a11yLabel: string,
+    onPress: function?(): void,
+    label: string?,                 // an extended FAB carries a word
+    action: string?,
+    position: string?,              // "bottom-right" (default) | "bottom-left"
+    inset: int?,                    // distance from the edges (16)
+    extra: string?,
+}
+/**
+ * A floating action button: the screen's one main action, pinned to a corner of its
+ * parent. Give the parent `grow: 1` so the corner is the screen's.
+ *
+ * ```chuks
+ * Fab({ icon: lucide("plus", 24, tk("primaryText")), a11yLabel: "New post", onPress: compose })
+ * ```
+ */
+export function Fab(p: FabProps): Node {
+    const i: InkClasses = ink(p.action ?? "primary", "solid")
+    const inset: int = p.inset ?? 16
+    var kids: []Node = [ p.icon ]
+    if (p.label != null) { kids.push(Text({ tw: "text-base font-semibold " + i.text }, p.label)) }
+    const left: bool = (p.position ?? "bottom-right") == "bottom-left"
+    return Pressable({ tw: "flex-row items-center justify-center gap-sm rounded-2xl shadow-md " + i.box + " " + (p.extra ?? ""),
+                       h: 56, px: p.label != null ? 20 : 0, w: p.label != null ? -1 : 56,
+                       abs: true, bottom: inset, right: left ? -1 : inset, left: left ? inset : -1,
+                       activeOpacity: 80, a11yRole: "button", a11yLabel: p.a11yLabel, onPress: p.onPress }, kids)
+}

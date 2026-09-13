@@ -1,0 +1,13 @@
+{
+  "name": "@chuks/ui",
+  "version": "0.1.0",
+  "description": "The component kit for Chuks Mobile: buttons, forms, feedback, overlays and data display, styled through the app's theme tokens, accessible by default, with one props record per component. Pure Chuks: no native code, installable and replaceable.",
+  "author": "Chuks Team",
+  "license": "MIT",
+  "main": "src/index.chuks",
+  "keywords": ["ui", "kit", "components", "design-system", "mobile", "ios", "android"],
+  "repository": "https://github.com/chuks-lang/chuks_ui",
+  "dependencies": {
+    "@chuks/mobile": "^0.1.25"
+  }
+}

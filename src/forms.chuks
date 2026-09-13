@@ -1,0 +1,291 @@
+// Form controls. Every one is CONTROLLED: the parent owns the value and passes it in,
+// the control reports a change and waits for the value to come back down. That is what
+// lets a list recycle a row without carrying the previous row's state.
+import { Node, Row, Column, Text, TextInput, Toggle } from "pkg/@chuks/mobile/core/ui.chuks";
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+import { InkClasses, ink, sizeText, sizeHeight, call0, call1 } from "./tokens.chuks";
+
+export dataType InputProps {
+    value: string?,
+    onChange: function?(v: string): void,
+    placeholder: string?,
+    secure: bool?,                  // password: mask the text
+    multiline: bool?,               // a taller text area
+    keyboardType: string?,          // "email" | "number" | "decimal" | "phone" | "url"
+    returnKeyType: string?,         // "done" | "send" | "search" | "next" | "go"
+    autoCapitalize: string?,        // "none" | "sentences" | "words" | "characters"
+    autoCorrect: bool?,
+    maxLength: int?,
+    editable: bool?,
+    invalid: bool?,
+    size: string?,
+    onSubmit: function?(): void,
+    onFocus: function?(): void,
+    onBlur: function?(): void,
+    a11yLabel: string?,
+    extra: string?,
+}
+/**
+ * A text field. `value` is yours; `onChange` gives you the new text on each edit.
+ * `invalid` reddens the border (FormControl sets it from its `error`).
+ *
+ * ```chuks
+ * Input({ value: email.get(), placeholder: "you@example.com", keyboardType: "email",
+ *         onChange: function(v: string): void { email.set(v) } })
+ * ```
+ */
+export function Input(p: InputProps): Node {
+    const ml: bool = p.multiline ?? false
+    const size: string = p.size ?? "md"
+    const h: int = ml ? 96 : sizeHeight(size)
+    const border: string = (p.invalid ?? false) ? "border-danger" : "border-border"
+    // multiline: the native field's own text inset handles padding, so no p-md (it would double up)
+    return TextInput({
+        tw: "bg-surface2 border rounded-lg " + border + " " + (ml ? "" : "px-md ") + sizeText(size) + " text-text " + (p.extra ?? ""),
+        h: h,
+        placeholder: p.placeholder ?? "", value: p.value, onChange: p.onChange,
+        secure: p.secure ?? false, multiline: ml,
+        keyboardType: p.keyboardType, returnKeyType: p.returnKeyType, autoCapitalize: p.autoCapitalize,
+        autoCorrect: p.autoCorrect, maxLength: p.maxLength, editable: p.editable,
+        onSubmit: p.onSubmit, onFocus: p.onFocus, onBlur: p.onBlur,
+        a11yLabel: p.a11yLabel ?? "",
+    })
+}
+
+export dataType FormControlProps {
+    label: string,
+    field: Node,
+    helper: string?,
+    error: string?,                 // "" or null = no error
+    required: bool?,
+    extra: string?,
+}
+/**
+ * A label, a field, and the line under it: a helper by default, the error when there
+ * is one. The field is any node; an `Input` inside takes `invalid` from `error` when
+ * you pass it. Required fields carry an asterisk.
+ *
+ * ```chuks
+ * FormControl({ label: "Email", required: true, error: emailError.get(),
+ *               helper: "We never share it",
+ *               field: Input({ value: email.get(), invalid: emailError.get() != "", onChange: setEmail }) })
+ * ```
+ */
+export function FormControl(p: FormControlProps): Node {
+    const err: string = p.error ?? ""
+    var kids: []Node = [
+        Row({ tw: "gap-xs items-center" }, [
+            Text({ tw: "text-sm font-semibold text-text" }, p.label),
+            Text({ tw: "text-sm text-danger", a11yLabel: "required", hidden: !(p.required ?? false) }, "*"),
+        ]),
+        p.field,
+    ]
+    if (err != "") { kids.push(Text({ tw: "text-xs text-danger", a11yLive: "polite" }, err)) }
+    else if (p.helper != null) { kids.push(Text({ tw: "text-xs text-muted" }, p.helper)) }
+    return Column({ tw: "gap-xs " + (p.extra ?? ""), justify: "start", align: "stretch" }, kids)
+}
+
+export dataType CheckboxProps {
+    label: string,
+    checked: bool,
+    onChange: function?(v: bool): void,
+    disabled: bool?,
+    action: string?,
+    size: string?,
+    extra: string?,
+}
+/**
+ * A box with a label. The parent owns `checked`; `onChange` reports the flip. A
+ * screen reader hears "<label>, checkbox, checked".
+ *
+ * ```chuks
+ * Checkbox({ label: "I agree", checked: ok.get(), onChange: function(v: bool): void { ok.set(v) } })
+ * ```
+ */
+export function Checkbox(p: CheckboxProps): Node {
+    const off: bool = p.disabled ?? false
+    const d: int = (p.size ?? "md") == "sm" ? 18 : ((p.size ?? "md") == "lg" ? 26 : 22)
+    const i: InkClasses = p.checked ? ink(p.action ?? "primary", "solid") : ink("secondary", "outline")
+    const next: bool = !p.checked
+    const cb: any = p.onChange
+    return Row({ tw: "items-center gap-sm " + (p.extra ?? ""), opacity: off ? 50 : 100,
+                 a11yRole: "checkbox", a11yState: { checked: p.checked, disabled: off },
+                 onPress: off ? null : function(): void { call1(cb, next) } }, [
+        Row({ w: d, h: d, tw: "rounded-md items-center justify-center " + (p.checked ? "" : "bg-surface2 ") + i.box }, [
+            Text({ tw: "font-bold " + i.text, size: d - 8, hidden: !p.checked }, "✓"),
+        ]),
+        Text({ tw: sizeText(p.size ?? "md") + " text-text" }, p.label),
+    ])
+}
+
+export dataType RadioGroupProps {
+    options: []string,
+    selected: int,
+    onSelect: function?(i: int): void,
+    disabled: bool?,
+    horizontal: bool?,
+    action: string?,
+    extra: string?,
+}
+/**
+ * One choice out of a list, as a column of radios. The parent owns `selected` (an
+ * index; -1 = none); `onSelect` reports a tap. Each radio says "checked" or not.
+ *
+ * ```chuks
+ * RadioGroup({ options: ["Card", "Cash"], selected: pay.get(),
+ *              onSelect: function(i: int): void { pay.set(i) } })
+ * ```
+ */
+export function RadioGroup(p: RadioGroupProps): Node {
+    var kids: []Node = []
+    for (var i: int = 0; i < p.options.length; i = i + 1) { kids.push(radio(p.options[i], i == p.selected, i, p.onSelect, p.disabled ?? false, p.action ?? "primary")) }
+    if (p.horizontal ?? false) { return Row({ tw: "gap-lg flex-wrap " + (p.extra ?? "") }, kids) }
+    return Column({ tw: "gap-md " + (p.extra ?? ""), justify: "start", align: "start" }, kids)
+}
+// Its own function so the tap closure binds THIS index (a closure built in the loop
+// would capture the loop binding's final value).
+function radio(label: string, on: bool, idx: int, cb: any, off: bool, action: string): Node {
+    const i: InkClasses = on ? ink(action, "outline") : ink("secondary", "outline")
+    return Row({ tw: "items-center gap-sm", opacity: off ? 50 : 100,
+                 a11yRole: "radio", a11yState: { checked: on, disabled: off },
+                 onPress: off ? null : function(): void { call1(cb, idx) } }, [
+        Row({ w: 22, h: 22, radius: 11, tw: "items-center justify-center border-2 " + (on ? "" : "bg-surface2 ") + i.box }, [
+            Row({ w: 10, h: 10, radius: 5, bg: tk(on ? "primary" : "surface2"), hidden: !on }, []),
+        ]),
+        Text({ tw: "text-base text-text" }, label),
+    ])
+}
+
+export dataType SwitchProps {
+    on: bool,
+    onToggle: function?(): void,
+    label: string?,
+    disabled: bool?,
+    extra: string?,
+}
+/**
+ * The native on/off switch, tinted with the theme. Controlled: `on` is yours,
+ * `onToggle` fires on a flip. Give it a `label` and the row is one element that says
+ * "<label>, switch, on".
+ */
+export function Switch(p: SwitchProps): Node {
+    const sw: Node = Toggle({ on: p.on, bg: tk("primary"), onPress: p.onToggle, disabled: p.disabled ?? false })
+    if (p.label == null) { return sw }
+    return Row({ tw: "items-center justify-between gap-md " + (p.extra ?? ""), onPress: (p.disabled ?? false) ? null : p.onToggle,
+                 a11yRole: "switch", a11yState: { checked: p.on, disabled: p.disabled ?? false } }, [
+        Text({ tw: "text-base text-text" }, p.label), sw,
+    ])
+}
+
+export dataType StepperProps {
+    value: int,
+    onChange: function?(v: int): void,
+    min: int?,
+    max: int?,
+    step: int?,
+    extra: string?,
+}
+/**
+ * A number with minus and plus. Clamped to `min`/`max`, so the caller never has to
+ * re-check what it hands back. The glyph buttons are named for a screen reader.
+ */
+export function Stepper(p: StepperProps): Node {
+    const lo: int = p.min ?? 0
+    const hi: int = p.max ?? 999999
+    const by: int = p.step ?? 1
+    const v: int = p.value
+    return Row({ tw: "items-center gap-sm bg-surface2 rounded-lg p-xs " + (p.extra ?? "") }, [
+        stepBtn("−", "Decrease", v - by >= lo, v - by, p.onChange),
+        Text({ tw: "text-base font-bold text-text w-10 text-center", a11yLive: "polite" }, string(v)),
+        stepBtn("+", "Increase", v + by <= hi, v + by, p.onChange),
+    ])
+}
+function stepBtn(glyph: string, name: string, enabled: bool, next: int, cb: any): Node {
+    return Row({ tw: "w-8 h-8 items-center justify-center rounded-md bg-surface", opacity: enabled ? 100 : 40,
+                 a11yRole: "button", a11yLabel: name, a11yState: { disabled: !enabled },
+                 onPress: enabled ? function(): void { call1(cb, next) } : null },
+        [ Text({ tw: "text-base font-bold text-text" }, glyph) ])
+}
+
+export dataType SearchBarProps {
+    value: string,
+    onChange: function?(v: string): void,
+    placeholder: string?,
+    icon: Node?,
+    onClear: function?(): void,
+    onSubmit: function?(): void,
+    extra: string?,
+}
+/**
+ * A search field with a leading icon slot and a clear button that appears once there
+ * is text. Icon-agnostic: pass the glyph as a node.
+ */
+export function SearchBar(p: SearchBarProps): Node {
+    var kids: []Node = []
+    if (p.icon != null) { kids.push(p.icon) }
+    kids.push(TextInput({ tw: "grow basis-0 h-11 text-base text-text bg-surface2", placeholder: p.placeholder ?? "Search",
+                          value: p.value, onChange: p.onChange, onSubmit: p.onSubmit, returnKeyType: "search", a11yRole: "search" }))
+    if (p.value != "") {
+        kids.push(Row({ tw: "w-6 h-6 items-center justify-center rounded-full bg-surface2", onPress: p.onClear,
+                        a11yRole: "button", a11yLabel: "Clear search" }, [ Text({ tw: "text-xs text-muted" }, "✕") ]))
+    }
+    return Row({ tw: "items-center gap-sm px-md bg-surface2 border border-border rounded-lg " + (p.extra ?? "") }, kids)
+}
+
+export dataType SegmentedControlProps {
+    options: []string,
+    selected: int,
+    onSelect: function?(i: int): void,
+    extra: string?,
+}
+/**
+ * One choice out of a few, as a row of segments. Composed rather than the native
+ * control, which themes poorly and differs in metrics across platforms. Each segment
+ * is a tab to a screen reader.
+ */
+export function SegmentedControl(p: SegmentedControlProps): Node {
+    var segs: []Node = []
+    for (var i: int = 0; i < p.options.length; i = i + 1) { segs.push(segment(p.options[i], i == p.selected, i, p.onSelect)) }
+    return Row({ tw: "bg-surface2 rounded-lg p-xs gap-xs " + (p.extra ?? "") }, segs)
+}
+function segment(label: string, on: bool, idx: int, cb: any): Node {
+    const skin: string = on ? "bg-surface shadow-sm" : ""
+    const txt: string = on ? "text-text font-bold" : "text-muted"
+    return Row({ tw: "grow basis-0 items-center justify-center py-sm rounded-md " + skin,
+                 onPress: function(): void { call1(cb, idx) }, a11yRole: "tab", a11yState: { selected: on } },
+        [ Text({ tw: "text-sm " + txt }, label) ])
+}
+
+export dataType TabsProps {
+    tabs: []string,
+    selected: int,
+    onSelect: function?(i: int): void,
+    panel: function?(i: int): Node,
+    action: string?,
+    extra: string?,
+}
+/**
+ * Tabs with an underline, and the selected tab's panel under them when `panels` is
+ * given (one node per tab, built lazily by index). The parent owns `selected`.
+ *
+ * ```chuks
+ * Tabs({ tabs: ["Posts", "Likes"], selected: tab.get(), onSelect: function(i: int): void { tab.set(i) },
+ *        panel: function(i: int): Node { return i == 0 ? Posts() : Likes() } })
+ * ```
+ */
+export function Tabs(p: TabsProps): Node {
+    var heads: []Node = []
+    for (var i: int = 0; i < p.tabs.length; i = i + 1) { heads.push(tabHead(p.tabs[i], i == p.selected, i, p.onSelect, p.action ?? "primary")) }
+    var kids: []Node = [ Row({ tw: "border-b border-border" }, heads) ]
+    const pf: any = p.panel
+    if (pf != null && p.selected >= 0 && p.selected < p.tabs.length) { const panel: Node = pf(p.selected); kids.push(panel) }
+    return Column({ tw: "gap-md " + (p.extra ?? ""), justify: "start", align: "stretch" }, kids)
+}
+function tabHead(label: string, on: bool, idx: int, cb: any, action: string): Node {
+    const i: InkClasses = ink(action, "ghost")
+    return Column({ tw: "grow basis-0 items-center py-md", onPress: function(): void { call1(cb, idx) },
+                    a11yRole: "tab", a11yState: { selected: on } }, [
+        Text({ tw: "text-sm font-semibold " + (on ? i.text : "text-muted") }, label),
+        Row({ tw: "h-1 mt-sm w-full rounded-full " + (on ? "bg-" + action : ""), bg: on ? tk(action == "primary" ? "primary" : action) : "" }, []),
+    ])
+}

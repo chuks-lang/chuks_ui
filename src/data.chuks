@@ -1,0 +1,211 @@
+// Data display: rows, disclosure, tables, pages, dates.
+import { Node, Row, Column, Text, List, Scroll, viewportWidth } from "pkg/@chuks/mobile/core/ui.chuks";
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+import { call0, call1 } from "./tokens.chuks";
+
+export dataType ListItemProps {
+    title: string,
+    subtitle: string?,
+    trailing: string?,
+    trailingNode: Node?,
+    leading: Node?,
+    onPress: function?(): void,
+    extra: string?,
+}
+export dataType CarouselProps {
+    children: []Node,
+    page: int,
+    onPage: function?(i: int): void,
+    h: int,
+    itemWidth: int?,                // page width; defaults to the viewport width
+    dots: bool?,                    // default true
+    extra: string?,
+}
+const DOTS_H: int = 20
+export dataType MonthViewProps {
+    year: int,
+    month: int,
+    selected: string?,
+    onSelect: function?(iso: string): void,
+    onMonth: function?(y: int, m: int): void,
+    sundayFirst: bool?,
+    extra: string?,
+}
+const MONTHS: []string = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+/**
+ * A row with a title, an optional subtitle, and a trailing text or node. Tappable when
+ * `onPress` is passed, and then one button to a screen reader.
+ */
+export function ListItem(p: ListItemProps): Node {
+    var kids: []Node = []
+    if (p.leading != null) { kids.push(p.leading) }
+    var textKids: []Node = [ Text({ tw: "text-base font-semibold text-text" }, p.title) ]
+    if (p.subtitle != null) { textKids.push(Text({ tw: "text-sm text-muted" }, p.subtitle)) }
+    kids.push(Column({ tw: "grow gap-xs", justify: "start", align: "start" }, textKids))
+    if (p.trailing != null) { kids.push(Text({ tw: "text-sm text-subtle" }, p.trailing)) }
+    if (p.trailingNode != null) { kids.push(p.trailingNode) }
+    return Row({ tw: "items-center gap-md p-md bg-surface rounded-lg " + (p.extra ?? ""), onPress: p.onPress,
+                 a11yRole: p.onPress != null ? "button" : "" }, kids)
+}
+
+export dataType AccordionProps {
+    title: string,
+    open: bool,
+    onToggle: function?(): void,
+    children: []Node,
+    extra: string?,
+}
+/**
+ * A titled row that expands to reveal its children. The open state stays with the
+ * caller, so a set of them can be driven together or independently. The header says
+ * expanded or collapsed.
+ */
+export function Accordion(p: AccordionProps): Node {
+    var kids: []Node = [
+        Row({ tw: "items-center justify-between py-md", onPress: p.onToggle, a11yRole: "button", a11yState: { expanded: p.open } }, [
+            Text({ tw: "text-base font-bold text-text" }, p.title),
+            Text({ tw: "text-sm text-muted", a11yHidden: true }, p.open ? "▾" : "▸"),
+        ]),
+    ]
+    if (p.open) { kids.push(Column({ tw: "pb-md gap-sm", justify: "start", align: "stretch" }, p.children)) }
+    return Column({ tw: "border-b border-border " + (p.extra ?? ""), justify: "start", align: "stretch" }, kids)
+}
+
+export dataType TableProps {
+    columns: []string,
+    rows: [][]string,
+    widths: ([]int)?,
+    striped: bool?,
+    extra: string?,
+}
+/**
+ * A grid of text. `columns` are the headers, `rows` the cells; `widths` fixes column
+ * widths in points (omit for equal shares). Long tables scroll sideways when wider
+ * than the screen.
+ *
+ * ```chuks
+ * Table({ columns: ["Day", "Steps"], rows: [["Mon", "8,412"], ["Tue", "10,003"]] })
+ * ```
+ */
+export function Table(p: TableProps): Node {
+    const ws: []int = p.widths ?? []
+    const n: int = p.columns.length
+    var head: []Node = []
+    for (var c: int = 0; c < n; c = c + 1) { head.push(cell(p.columns[c], c, ws, true, "text-xs font-bold text-subtle uppercase")) }
+    var body: []Node = [ Row({ tw: "bg-surface2 border-b border-border" }, head) ]
+    for (var r: int = 0; r < p.rows.length; r = r + 1) {
+        const row: []string = p.rows[r]
+        var cells: []Node = []
+        for (var c2: int = 0; c2 < n; c2 = c2 + 1) { cells.push(cell(c2 < row.length ? row[c2] : "", c2, ws, false, "text-sm text-text")) }
+        const stripe: string = ((p.striped ?? true) && r % 2 == 1) ? "bg-surface2 " : ""
+        body.push(Row({ tw: stripe + "border-b border-borderSoft" }, cells))
+    }
+    const table: Node = Column({ tw: "rounded-lg border border-border bg-surface " + (p.extra ?? ""), justify: "start", align: "stretch", overflow: "hidden" }, body)
+    var total: int = 0
+    for (var w of ws) { total = total + w }
+    if (total > viewportWidth() && viewportWidth() > 0) { return Scroll({ horizontal: true }, [ table ]) }
+    return table
+}
+function cell(text: string, idx: int, ws: []int, header: bool, cls: string): Node {
+    if (idx < ws.length) { return Row({ w: ws[idx], tw: "px-md py-sm" }, [ Text({ tw: cls, a11yRole: header ? "header" : "" }, text) ]) }
+    return Row({ tw: "grow basis-0 px-md py-sm" }, [ Text({ tw: cls, a11yRole: header ? "header" : "" }, text) ])
+}
+
+/**
+ * A paged horizontal strip with page dots. One child per page; each fills the
+ * carousel's width. `page` is yours to hold.
+ */
+export function Carousel(p: CarouselProps): Node {
+    const showDots: bool = p.dots ?? true
+    // viewportWidth() is 0 until the host has reported a viewport (the first frame), so
+    // fall back to a sane page rather than laying out zero-width pages on that pass.
+    const vw: int = viewportWidth()
+    const pw: int = p.itemWidth ?? (vw > 0 ? vw : 320)
+    const kidsRef: []Node = p.children
+    var kids: []Node = [
+        List({ count: kidsRef.length, horizontal: true, paging: true, itemWidth: pw, h: p.h,
+               key: function(i: int): string { return "page" + string(i) },
+               item: function(i: int, left: int): Node { return Column({ abs: true, top: 0, left: left, w: pw, h: p.h }, [ kidsRef[i] ]) },
+               onVisible: p.onPage }),
+    ]
+    if (showDots) {
+        var dots: []Node = []
+        for (var d: int = 0; d < kidsRef.length; d = d + 1) { dots.push(Row({ tw: (d == p.page ? "bg-primary" : "bg-border") + " w-2 h-2 rounded-full" }, [])) }
+        kids.push(Row({ h: DOTS_H, tw: "items-center justify-center gap-xs", a11yLabel: "Page " + string(p.page + 1) + " of " + string(kidsRef.length), a11yLive: "polite" }, dots))
+    }
+    // A List fills its parent, so the wrapper is sized explicitly.
+    return Column({ h: p.h + (showDots ? DOTS_H : 0), tw: (p.extra ?? "") }, kids)
+}
+
+/**
+ * A month. `year`/`month` (1-12) say which; `selected` is an ISO date ("2026-09-13")
+ * or ""; `onSelect` gets the tapped day's ISO date; `onMonth` gets the month the
+ * arrows move to. Weeks start on Monday unless `sundayFirst`.
+ *
+ * ```chuks
+ * MonthView({ year: 2026, month: 9, selected: day.get(),
+ *            onSelect: function(iso: string): void { day.set(iso) },
+ *            onMonth: function(y: int, m: int): void { ym.set(string(y) + "-" + string(m)) } })
+ * ```
+ */
+export function MonthView(p: MonthViewProps): Node {
+    const y: int = p.year
+    const m: int = p.month
+    const sunFirst: bool = p.sundayFirst ?? false
+    const days: []string = sunFirst ? ["S", "M", "T", "W", "T", "F", "S"] : ["M", "T", "W", "T", "F", "S", "S"]
+    // Zeller: 0 = Sunday for the first of the month, then rotate to the week's start.
+    const dow: int = weekday(y, m, 1)
+    const lead: int = sunFirst ? dow : (dow + 6) % 7
+    const n: int = daysIn(y, m)
+    const sel: string = p.selected ?? ""
+    const onM: any = p.onMonth
+    var header: []Node = [
+        Row({ w: 36, h: 36, tw: "items-center justify-center rounded-full", a11yRole: "button", a11yLabel: "Previous month",
+              onPress: function(): void { call2(onM, m == 1 ? y - 1 : y, m == 1 ? 12 : m - 1) } }, [ Text({ tw: "text-base text-text" }, "‹") ]),
+        Text({ tw: "text-base font-bold text-text grow text-center", a11yRole: "header", a11yLive: "polite" }, MONTHS[m - 1] + " " + string(y)),
+        Row({ w: 36, h: 36, tw: "items-center justify-center rounded-full", a11yRole: "button", a11yLabel: "Next month",
+              onPress: function(): void { call2(onM, m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1) } }, [ Text({ tw: "text-base text-text" }, "›") ]),
+    ]
+    var dayHead: []Node = []
+    for (var d of days) { dayHead.push(Row({ tw: "grow basis-0 items-center py-xs" }, [ Text({ tw: "text-xs font-bold text-subtle" }, d) ])) }
+    var weeks: []Node = []
+    var cells: []Node = []
+    for (var b: int = 0; b < lead; b = b + 1) { cells.push(Row({ tw: "grow basis-0", h: 40 }, [])) }
+    for (var day: int = 1; day <= n; day = day + 1) {
+        const iso: string = string(y) + "-" + pad2(m) + "-" + pad2(day)
+        cells.push(dayCell(day, iso, iso == sel, p.onSelect))
+        if (cells.length == 7) { weeks.push(Row({}, cells)); cells = [] }
+    }
+    if (cells.length > 0) {
+        while (cells.length < 7) { cells.push(Row({ tw: "grow basis-0", h: 40 }, [])) }
+        weeks.push(Row({}, cells))
+    }
+    var kids: []Node = [ Row({ tw: "items-center gap-sm" }, header), Row({}, dayHead) ]
+    for (var wk of weeks) { kids.push(wk) }
+    return Column({ tw: "bg-surface rounded-xl border border-border p-md gap-xs " + (p.extra ?? ""), justify: "start", align: "stretch" }, kids)
+}
+function dayCell(day: int, iso: string, on: bool, cb: any): Node {
+    return Row({ tw: "grow basis-0 items-center justify-center", h: 40, onPress: function(): void { call1(cb, iso) },
+                 a11yRole: "button", a11yLabel: iso, a11yState: { selected: on } }, [
+        Row({ w: 32, h: 32, radius: 16, tw: "items-center justify-center " + (on ? "bg-primary" : "") }, [
+            Text({ tw: "text-sm " + (on ? "font-bold text-primaryText" : "text-text") }, string(day)),
+        ]),
+    ])
+}
+function call2(f: any, a: int, b: int): void { if (f != null) { f(a, b) } }
+function pad2(n: int): string { return n < 10 ? "0" + string(n) : string(n) }
+function daysIn(y: int, m: int): int {
+    if (m == 2) { return (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)) ? 29 : 28 }
+    if (m == 4 || m == 6 || m == 9 || m == 11) { return 30 }
+    return 31
+}
+// Zeller's congruence, 0 = Sunday.
+function weekday(y: int, m: int, d: int): int {
+    var yy: int = y
+    var mm: int = m
+    if (mm < 3) { mm = mm + 12; yy = yy - 1 }
+    const k: int = yy % 100
+    const j: int = yy / 100
+    const h: int = (d + (13 * (mm + 1)) / 5 + k + k / 4 + j / 4 + 5 * j) % 7
+    return (h + 6) % 7
+}

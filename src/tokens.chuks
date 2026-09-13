@@ -1,0 +1,78 @@
+// The vocabulary every component shares. Three words describe a component's look:
+//
+//   action   what it means: "primary" | "secondary" | "positive" | "negative"
+//   variant  how much ink it uses: per component ("solid" | "outline" | "ghost" | ...)
+//   size     "sm" | "md" | "lg"
+//
+// Each resolves to theme ROLES (tw classes such as `bg-primary`, `text-successText`),
+// never to a colour, so every component restyles with setTheme and a custom theme.
+// This file is the only place those words are turned into classes.
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+
+// The role names behind an action: its fill, the text on that fill, and its soft tint.
+export dataType Roles { fill: string; onFill: string; soft: string }
+
+/** The three theme roles behind an action: fill, text on the fill, and the soft tint. */
+export function actionRoles(action: string): Roles {
+    if (action == "positive") { return { fill: "success", onFill: "successText", soft: "successSoft" } }
+    if (action == "negative") { return { fill: "danger", onFill: "dangerText", soft: "dangerSoft" } }
+    if (action == "secondary") { return { fill: "surface2", onFill: "text", soft: "surface2" } }
+    return { fill: "primary", onFill: "primaryText", soft: "primarySoft" }
+}
+
+// Classes for a filled, outlined, ghost or link treatment of an action. The pair is
+// (container classes, text classes).
+export dataType InkClasses { box: string; text: string }
+
+/**
+ * The tw classes for an action drawn in a variant: "solid" fills, "outline" strokes,
+ * "ghost" is text only, "link" underlines, "soft" tints. Use it to build a component
+ * that should colour like a Button does.
+ */
+export function ink(action: string, variant: string): InkClasses {
+    const r: Roles = actionRoles(action)
+    // A secondary solid fill is a quiet surface with a hairline; its text is the body colour.
+    if (variant == "outline") { return { box: "border border-" + (action == "secondary" ? "border" : r.fill), text: "text-" + (action == "secondary" ? "text" : r.fill) } }
+    if (variant == "ghost") { return { box: "", text: "text-" + (action == "secondary" ? "text" : r.fill) } }
+    if (variant == "link") { return { box: "", text: "underline text-" + (action == "secondary" ? "text" : r.fill) } }
+    if (variant == "soft") { return { box: "bg-" + r.soft, text: "text-" + (action == "secondary" ? "muted" : r.fill) } }
+    if (action == "secondary") { return { box: "bg-surface2 border border-border", text: "text-text" } }
+    return { box: "bg-" + r.fill, text: "text-" + r.onFill }
+}
+
+// Padding and type for a size. A control is 36 / 44 / 52 points tall.
+/** The padding classes for a control of `size`. */
+export function sizePad(size: string): string {
+    if (size == "sm") { return "px-md py-sm" }
+    if (size == "lg") { return "px-xl py-lg" }
+    return "px-lg py-md"
+}
+/** The text-size class for a control of `size`. */
+export function sizeText(size: string): string {
+    if (size == "sm") { return "text-sm" }
+    if (size == "lg") { return "text-lg" }
+    return "text-base"
+}
+/** The height in points of a control of `size`: 36, 44 or 52. */
+export function sizeHeight(size: string): int {
+    if (size == "sm") { return 36 }
+    if (size == "lg") { return 52 }
+    return 44
+}
+// A glyph beside text is a step smaller than the text.
+/** The glyph size in points that sits beside text of `size`. */
+export function sizeIcon(size: string): int {
+    if (size == "sm") { return 14 }
+    if (size == "lg") { return 22 }
+    return 18
+}
+// The theme colour an action's fill resolves to, for a prop that takes a colour.
+/** The theme colour an action's fill resolves to, for a prop that takes a colour. */
+export function actionColor(action: string): string { return tk(actionRoles(action).fill) }
+
+// Call an optional closure. A dataType field typed `function?(): void` is null when the
+// caller left it out; this is the one place that check is written.
+/** Call an optional no-argument closure, or do nothing when it was left out. */
+export function call0(f: any): void { if (f != null) { f() } }
+/** Call an optional one-argument closure with `v`, or do nothing when it was left out. */
+export function call1(f: any, v: any): void { if (f != null) { f(v) } }

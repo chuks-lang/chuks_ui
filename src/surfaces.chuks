@@ -1,0 +1,157 @@
+// Surfaces, type and small labels.
+import { Node, Row, Column, Text, Image } from "pkg/@chuks/mobile/core/ui.chuks";
+import { Animated, AnimHandle, useAnimated, animLoop, animStep } from "pkg/@chuks/mobile/core/animated.chuks";
+import { useEffect } from "pkg/@chuks/mobile/core/state.chuks";
+import { InkClasses, ink, sizeText } from "./tokens.chuks";
+
+export dataType CardProps {
+    children: []Node,
+    variant: string?,
+    pad: string?,                   // "sm" | "md" (default) | "lg"
+    onPress: function?(): void,     // a tappable card is a button to a screen reader
+    extra: string?,
+}
+/**
+ * A surface that groups content. `variant`: "elevated" (default: a border and a soft
+ * shadow), "outline", "filled" (a tinted fill, no border), "ghost" (padding only).
+ *
+ * ```chuks
+ * Card({ children: [ Heading({ text: "Today" }), Text({}, "3 walks") ] })
+ * ```
+ */
+export function Card(p: CardProps): Node {
+    const v: string = p.variant ?? "elevated"
+    var skin: string = "bg-surface border border-border shadow-sm"
+    if (v == "outline") { skin = "bg-surface border border-border" }
+    else if (v == "filled") { skin = "bg-surface2" }
+    else if (v == "ghost") { skin = "" }
+    const pad: string = p.pad ?? "md"
+    const padCls: string = pad == "sm" ? "p-md" : (pad == "lg" ? "p-xl" : "p-lg")
+    return Column({ tw: "rounded-xl gap-md " + padCls + " " + skin + " " + (p.extra ?? ""), justify: "start",
+                    onPress: p.onPress, a11yRole: p.onPress != null ? "button" : "" }, p.children)
+}
+
+export dataType HeadingProps {
+    text: string,
+    size: string?,
+    extra: string?,
+}
+/**
+ * A heading. `size`: "xs" | "sm" | "md" (default) | "lg" | "xl". A screen reader
+ * jumps between headings, so use one for every section title.
+ */
+export function Heading(p: HeadingProps): Node {
+    const s: string = p.size ?? "md"
+    var cls: string = "text-xl"
+    if (s == "xs") { cls = "text-sm" } else if (s == "sm") { cls = "text-base" } else if (s == "lg") { cls = "text-2xl" } else if (s == "xl") { cls = "text-3xl" }
+    return Text({ tw: cls + " font-bold text-text " + (p.extra ?? ""), a11yRole: "header" }, p.text)
+}
+
+export dataType SectionHeaderProps { text: string, extra: string? }
+/** A small, quiet label above a group of rows. A header to a screen reader. */
+export function SectionHeader(p: SectionHeaderProps): Node {
+    return Text({ tw: "text-xs font-bold text-subtle uppercase tracking-wide p-sm " + (p.extra ?? ""), a11yRole: "header" }, p.text)
+}
+
+export dataType DividerProps { vertical: bool?, extra: string? }
+/** A hairline. `vertical: true` for a column separator inside a Row. Decoration to a screen reader. */
+export function Divider(p: DividerProps): Node {
+    if (p.vertical ?? false) { return Row({ tw: "w-1 bg-borderSoft self-stretch " + (p.extra ?? ""), a11yHidden: true }, []) }
+    return Row({ tw: "h-1 bg-borderSoft " + (p.extra ?? ""), a11yHidden: true }, [])
+}
+
+/**
+ * A small status label. `action` colours it; `variant`: "soft" (default: a tint),
+ * "solid", "outline".
+ *
+ * ```chuks
+ * Badge({ text: "Live", action: "positive" })
+ * Badge({ text: "3", variant: "solid" })
+ * ```
+ */
+export dataType BadgeProps {
+    text: string,
+    action: string?,
+    variant: string?,
+    size: string?,
+    extra: string?,
+}
+/** A small, quiet label above a group of rows. A header to a screen reader. */
+export function Badge(p: BadgeProps): Node {
+    const i: InkClasses = ink(p.action ?? "secondary", p.variant ?? "soft")
+    const sm: bool = (p.size ?? "sm") == "sm"
+    return Row({ tw: "rounded-full items-center " + (sm ? "px-sm py-xs" : "px-md py-sm") + " " + i.box + " " + (p.extra ?? "") }, [
+        Text({ tw: (sm ? "text-xs" : "text-sm") + " font-semibold " + i.text }, p.text),
+    ])
+}
+
+export dataType ChipProps {
+    text: string,
+    selected: bool?,
+    onPress: function?(): void,
+    icon: Node?,
+    action: string?,
+    extra: string?,
+}
+/**
+ * A selectable pill (filters, tags). The parent owns `selected`. A button to a screen
+ * reader that says whether it is selected.
+ */
+export function Chip(p: ChipProps): Node {
+    const on: bool = p.selected ?? false
+    const i: InkClasses = on ? ink(p.action ?? "primary", "solid") : ink("secondary", "outline")
+    var kids: []Node = []
+    if (p.icon != null) { kids.push(p.icon) }
+    kids.push(Text({ tw: "text-sm font-semibold " + i.text }, p.text))
+    return Row({ tw: "rounded-full px-md py-sm items-center gap-xs " + (on ? "" : "bg-surface2 ") + i.box + " " + (p.extra ?? ""),
+                 onPress: p.onPress, a11yRole: "button", a11yState: { selected: on } }, kids)
+}
+
+export dataType AvatarProps {
+    initials: string,
+    src: string?,
+    size: string?,
+    a11yLabel: string?,             // the person's name
+    extra: string?,
+}
+/**
+ * A round picture or initials. `src` shows the image; without it the `initials` show
+ * on a tinted disc. `size`: "sm" (32) | "md" (40, default) | "lg" (56) | "xl" (80).
+ */
+export function Avatar(p: AvatarProps): Node {
+    const s: string = p.size ?? "md"
+    const d: int = s == "sm" ? 32 : (s == "lg" ? 56 : (s == "xl" ? 80 : 40))
+    const label: string = p.a11yLabel ?? p.initials
+    if (p.src != null) {
+        return Image({ src: p.src, w: d, h: d, radius: d / 2, resize: "cover", a11yRole: "image", a11yLabel: label, tw: p.extra ?? "" })
+    }
+    const fs: string = s == "sm" ? "text-xs" : (s == "lg" ? "text-lg" : (s == "xl" ? "text-2xl" : "text-sm"))
+    return Row({ w: d, h: d, radius: d / 2, tw: "bg-primarySoft items-center justify-center " + (p.extra ?? ""), a11yRole: "image", a11yLabel: label }, [
+        Text({ tw: fs + " font-bold text-primary" }, p.initials),
+    ])
+}
+
+export dataType SkeletonProps {
+    h: int,
+    w: int?,                        // omit to fill the available width
+    radius: int?,
+    extra: string?,
+}
+/**
+ * The grey shape a card or row shows while its data loads; it pulses on the native
+ * driver. Call it inside a `Comp` (it holds animation state). Hidden from screen
+ * readers: the real content will speak for itself.
+ */
+export function Skeleton(p: SkeletonProps): Node {
+    const a: Animated = useAnimated(35)
+    useEffect(function(): any {
+        const h: AnimHandle = animLoop([
+            animStep(650, function(): void { a.timing(85, 650, "ease") }),
+            animStep(650, function(): void { a.timing(35, 650, "ease") }),
+        ])
+        return function(): void { h.stop() }
+    }, [])
+    const fill: string = p.w == null ? "grow " : ""
+    return Row({ h: p.h, w: p.w ?? -1, radius: p.radius ?? 10, opacity: a.value(), a11yHidden: true,
+                 tw: "bg-surface2 " + fill + (p.extra ?? "") }, [])
+}

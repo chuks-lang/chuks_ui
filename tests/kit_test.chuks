@@ -1,0 +1,97 @@
+// @chuks/ui on the wire. Drives the real reconciler headlessly and checks what each
+// component sends the host: its role and state for a screen reader, its theme roles,
+// the shape a controlled component reports through. Run:  chuks run tests/kit_test.chuks
+import { Reconciler, Column, Text, Node, ViewRef } from "pkg/@chuks/mobile/core/ui.chuks";
+import { Button, IconButton, Link, Fab, Card, Heading, SectionHeader, Divider, Badge, Chip, Avatar,
+         Input, FormControl, Checkbox, RadioGroup, Switch, Stepper, SearchBar, SegmentedControl, Tabs,
+         Alert, EmptyState, toast, toastWith, ToastHost, Tooltip, AlertDialog, ActionSheet, Drawer, ImageViewer,
+         ListItem, Accordion, Table, Carousel, MonthView, ink, sizeHeight } from "../src/index.chuks";
+
+var PASS: int = 0
+var FAIL: int = 0
+function check(cond: bool, name: string): void {
+    if (cond) { PASS = PASS + 1; println("  ok   " + name) }
+    else { FAIL = FAIL + 1; println("  FAIL " + name) }
+}
+function render(n: Node): string { const r: Reconciler = new Reconciler(); r.drain(); r.renderRoot(Column({}, [ n ])); return r.drain() }
+function has(s: string, sub: string): bool { return s.indexOf(sub) >= 0 }
+function count(s: string, sub: string): int { return s.split(sub).length - 1 }
+
+function main(): void {
+    println("tokens")
+    check(ink("primary", "solid").box == "bg-primary" && ink("primary", "solid").text == "text-primaryText", "solid primary fills with the primary role")
+    check(ink("negative", "outline").box == "border border-danger", "outline negative strokes with the danger role")
+    check(ink("secondary", "solid").box == "bg-surface2 border border-border", "solid secondary is a quiet surface")
+    check(sizeHeight("sm") == 36 && sizeHeight("md") == 44 && sizeHeight("lg") == 52, "sizes are 36/44/52")
+
+    println("buttons")
+    var s: string = render(Button({ label: "Save" }))
+    check(has(s, "ar=button;") && has(s, "bg=") && has(s, "h=44;"), "Button is a button, filled, 44 tall")
+    s = render(Button({ label: "Off", disabled: true, onPress: function(): void { } }))
+    check(has(s, "as=dis;") && has(s, "dis=1;") && !has(s, "T|app.0|app.0"), "a disabled Button says so and binds no tap")
+    s = render(Button({ label: "Busy", loading: true }))
+    check(has(s, "C|app.0.0|Spinner") && has(s, "as=dis,busy;"), "a loading Button shows a spinner and says busy")
+    s = render(IconButton({ icon: Text({}, "x"), a11yLabel: "Close" }))
+    check(has(s, "al=Close;") && has(s, "ar=button;"), "IconButton carries its name")
+    s = render(Link({ text: "Terms" }))
+    check(has(s, "ar=link;") && has(s, "deco=underline;"), "Link is a link, underlined")
+    s = render(Fab({ icon: Text({}, "+"), a11yLabel: "New" }))
+    check(has(s, "pos=abs;") && has(s, "bottom=16;") && has(s, "right=16;") && has(s, "al=New;"), "Fab pins to the corner and is named")
+
+    println("surfaces")
+    s = render(Heading({ text: "H" })); check(has(s, "ar=header;"), "Heading is a header")
+    s = render(SectionHeader({ text: "S" })); check(has(s, "ar=header;") && has(s, "txform=upper;"), "SectionHeader is a header in caps")
+    s = render(Divider({})); check(has(s, "ax=1;"), "Divider is hidden from a screen reader")
+    s = render(Badge({ text: "Live", action: "positive" })); check(has(s, "bg="), "a soft Badge is tinted")
+    s = render(Chip({ text: "c", selected: true })); check(has(s, "as=sel;") && has(s, "ar=button;"), "a selected Chip says selected")
+    s = render(Avatar({ initials: "AL" })); check(has(s, "ar=image;") && has(s, "al=AL;"), "Avatar is an image named by its initials")
+    s = render(Card({ children: [ Text({}, "x") ], onPress: function(): void { } })); check(has(s, "ar=button;"), "a tappable Card is a button")
+    s = render(Card({ children: [ Text({}, "x") ] })); check(!has(s, "ar=button;"), "a plain Card is not")
+
+    println("forms")
+    s = render(FormControl({ label: "Email", required: true, error: "Needs an @", field: Input({ value: "x", invalid: true }) }))
+    check(has(s, "P|app.0.0.1|*") && has(s, "Needs an @") && has(s, "av=polite;"), "FormControl shows the asterisk and announces the error")
+    s = render(Checkbox({ label: "ok", checked: true })); check(has(s, "ar=checkbox;") && has(s, "as=chk;"), "Checkbox is a checked checkbox")
+    s = render(Checkbox({ label: "ok", checked: false, disabled: true })); check(has(s, "as=dis,unchk;"), "unchecked and disabled are both said")
+    s = render(RadioGroup({ options: ["a", "b"], selected: 1 }))
+    check(count(s, "ar=radio;") == 2 && has(s, "as=unchk;") && has(s, "as=chk;"), "each radio is a radio, one checked")
+    s = render(Switch({ on: true, label: "Wi-Fi" })); check(has(s, "ar=switch;") && has(s, "as=chk;") && has(s, "C|app.0.1|Switch"), "a labelled Switch is one switch element around the native toggle")
+    s = render(Stepper({ value: 0, min: 0 })); check(has(s, "al=Decrease;") && has(s, "as=dis;") && has(s, "al=Increase;"), "Stepper names its buttons and disables at the limit")
+    s = render(SearchBar({ value: "q" })); check(has(s, "ar=search;") && has(s, "al=Clear search;"), "SearchBar is a search field with a named clear button")
+    s = render(SegmentedControl({ options: ["a", "b"], selected: 0 })); check(count(s, "ar=tab;") == 2 && has(s, "as=sel;"), "segments are tabs")
+    s = render(Tabs({ tabs: ["x", "y"], selected: 1, panel: function(i: int): Node { return Text({}, "panel " + string(i)) } }))
+    check(count(s, "ar=tab;") == 2 && has(s, "P|app.0.1|panel 1"), "Tabs are tabs and show the selected panel")
+
+    println("feedback")
+    s = render(Alert({ title: "Saved", action: "positive" })); check(has(s, "ar=alert;") && has(s, "av=polite;"), "Alert is an alert that announces itself")
+    s = render(EmptyState({ title: "None" })); check(has(s, "ar=header;"), "EmptyState's title is a header")
+    toast("hello"); toastWith({ message: "gone", actionLabel: "Undo", action: "negative" })
+    s = render(ToastHost())
+    check(has(s, "P|app.0.0.1.0|hello") && has(s, "av=polite;") && has(s, "Undo") && has(s, "ar=button;"), "ToastHost shows both toasts, announces them, and the action is a button")
+
+    println("overlays")
+    const anchor: ViewRef = new ViewRef()
+    s = render(Tooltip({ text: "tip", anchor: anchor, visible: true })); check(has(s, "C|app.0|Popover") && has(s, "parw=1;"), "Tooltip is a Popover with a pointer")
+    s = render(AlertDialog({ visible: true, title: "T", action: "negative", cancelText: "" }))
+    check(has(s, "C|app.0|Modal") && has(s, "mvis=1;") && count(s, "ar=button;") == 1, "AlertDialog is a Modal; an empty cancelText leaves one button")
+    s = render(ActionSheet({ visible: true, items: ["a", "b"], destructive: 1 }))
+    check(has(s, "mpos=bottom;") && count(s, "ar=button;") == 3, "ActionSheet is a bottom sheet with a row per item plus cancel")
+    s = render(Drawer({ visible: true, children: [ Text({}, "d") ] })); check(has(s, "self=start;") && has(s, "hpct=100;"), "Drawer pins its panel to the side, full height")
+    s = render(Drawer({ visible: false, children: [ Text({}, "d") ] })); check(!has(s, "P|"), "a hidden Drawer mounts no content")
+    s = render(ImageViewer({ visible: true, src: "x.png" })); check(has(s, "C|app.0.0.0|Image") && has(s, "rmode=contain;"), "ImageViewer shows the image contained")
+
+    println("data")
+    s = render(ListItem({ title: "li", onPress: function(): void { } })); check(has(s, "ar=button;"), "a tappable ListItem is a button")
+    s = render(Accordion({ title: "a", open: false, children: [ Text({}, "in") ] })); check(has(s, "as=col;") && !has(s, "P|app.0.1"), "a closed Accordion says collapsed and mounts nothing")
+    s = render(Accordion({ title: "a", open: true, children: [ Text({}, "in") ] })); check(has(s, "as=exp;") && has(s, "|in"), "an open one says expanded and shows its children")
+    s = render(Table({ columns: ["a", "b"], rows: [["1", "2"]] })); check(count(s, "ar=header;") == 2 && has(s, "P|app.0.1.0.0|1"), "Table headers are headers")
+    s = render(MonthView({ year: 2026, month: 9, selected: "2026-09-13" }))
+    check(has(s, "September 2026") && has(s, "al=2026-09-13;") && has(s, "as=sel;") && has(s, "al=Previous month;"), "MonthView names every day and the arrows, and marks the selected one")
+    check(count(s, "ar=button;") == 32, "September has 30 days plus two arrows")
+
+    println("")
+    println("kit: " + string(PASS) + " passed, " + string(FAIL) + " failed")
+    if (FAIL > 0) { throw new Error("kit tests failed") }
+}
+
+main();

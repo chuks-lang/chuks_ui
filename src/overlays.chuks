@@ -1,0 +1,150 @@
+// Overlays: things that appear over the screen and go away. Every one is controlled:
+// the parent owns `visible` and flips it in the dismiss callback.
+import { Node, Row, Column, Text, Image, Modal, Popover, ViewRef, Scroll, viewportWidth, viewportHeight, safeTop, safeBottom } from "pkg/@chuks/mobile/core/ui.chuks";
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+import { Button } from "./buttons.chuks";
+import { call0, call1 } from "./tokens.chuks";
+
+export dataType TooltipProps {
+    text: string,
+    anchor: ViewRef,
+    visible: bool,
+    placement: string?,             // "top" (default) | "bottom" | "left" | "right" | "auto"
+    onDismiss: function?(): void,
+}
+/**
+ * A short line anchored to a view, on a dark pill with a pointer. `anchor` is the
+ * useViewRef() handle the anchored view carries as `ref`.
+ *
+ * ```chuks
+ * const info: ViewRef = useViewRef()
+ * IconButton({ ref: info, icon: lucide("info", 16, tk("muted")), a11yLabel: "About this", onPress: function(): void { tip.set(true) } })
+ * Tooltip({ text: "Sent once a day", anchor: info, visible: tip.get(), onDismiss: function(): void { tip.set(false) } })
+ * ```
+ */
+export function Tooltip(p: TooltipProps): Node {
+    return Popover({ visible: p.visible, anchor: p.anchor, placement: p.placement ?? "top", arrow: true, offset: 6, onDismiss: p.onDismiss }, [
+        Row({ tw: "rounded-lg px-md py-sm", bg: tk("text"), maxw: 260 }, [ Text({ tw: "text-sm", color: tk("bg") }, p.text) ]),
+    ])
+}
+
+export dataType AlertDialogProps {
+    visible: bool,
+    title: string,
+    body: string?,
+    confirmText: string?,           // "OK"
+    cancelText: string?,            // "Cancel"; "" hides the button
+    action: string?,
+    onConfirm: function?(): void,
+    onCancel: function?(): void,
+}
+/**
+ * A themed confirm dialog: a title, a line, and two buttons. Unlike the framework's
+ * native `Alert`, it looks like the rest of the app. `action` colours the confirm
+ * button (negative for a destructive choice). Cancel, the scrim and Android back all
+ * fire `onCancel`.
+ *
+ * ```chuks
+ * AlertDialog({ visible: ask.get(), title: "Delete post?", body: "This cannot be undone.",
+ *               confirmText: "Delete", action: "negative",
+ *               onConfirm: remove, onCancel: function(): void { ask.set(false) } })
+ * ```
+ */
+export function AlertDialog(p: AlertDialogProps): Node {
+    const cancel: string = p.cancelText ?? "Cancel"
+    var textKids: []Node = [ Text({ tw: "text-lg font-bold text-text", a11yRole: "header" }, p.title) ]
+    if (p.body != null) { textKids.push(Text({ tw: "text-base text-muted" }, p.body)) }
+    var buttons: []Node = []
+    if (cancel != "") { buttons.push(Button({ label: cancel, variant: "ghost", action: "secondary", onPress: p.onCancel })) }
+    buttons.push(Button({ label: p.confirmText ?? "OK", action: p.action ?? "primary", onPress: p.onConfirm }))
+    return Modal({ visible: p.visible, position: "center", onDismiss: p.onCancel }, [
+        Column({ tw: "bg-surface rounded-2xl p-xl gap-lg", w: 320, justify: "start", align: "stretch", a11yLive: "assertive" }, [
+            Column({ tw: "gap-sm", justify: "start", align: "start" }, textKids),
+            Row({ tw: "justify-end gap-sm" }, buttons),
+        ]),
+    ])
+}
+
+export dataType ActionSheetProps {
+    visible: bool,
+    items: []string,
+    onSelect: function?(i: int): void,
+    onDismiss: function?(): void,
+    title: string?,
+    destructive: int?,              // index of the red item (-1 = none)
+    cancelText: string?,            // "Cancel"
+}
+/**
+ * A sheet of choices from the bottom. `onSelect` reports the tapped index; the
+ * `destructive` index is red. The scrim, a swipe down, Android back and the cancel
+ * row all fire `onDismiss`.
+ *
+ * ```chuks
+ * ActionSheet({ visible: menu.get(), title: "Photo", items: ["Save", "Share", "Delete"], destructive: 2,
+ *               onSelect: function(i: int): void { menu.set(false); act(i) },
+ *               onDismiss: function(): void { menu.set(false) } })
+ * ```
+ */
+export function ActionSheet(p: ActionSheetProps): Node {
+    var rows: []Node = []
+    if (p.title != null) { rows.push(Text({ tw: "text-xs font-bold text-subtle uppercase p-md text-center", a11yRole: "header" }, p.title)) }
+    for (var i: int = 0; i < p.items.length; i = i + 1) { rows.push(sheetRow(p.items[i], i, i == (p.destructive ?? -1), p.onSelect)) }
+    rows.push(Row({ tw: "items-center justify-center py-lg border-t border-border", onPress: p.onDismiss, a11yRole: "button" }, [
+        Text({ tw: "text-base font-bold text-text" }, p.cancelText ?? "Cancel"),
+    ]))
+    return Modal({ visible: p.visible, position: "bottom", onDismiss: p.onDismiss }, [
+        Column({ tw: "bg-surface rounded-t-2xl pt-sm pb-lg", justify: "start", align: "stretch" }, rows),
+    ])
+}
+function sheetRow(label: string, idx: int, red: bool, cb: any): Node {
+    return Row({ tw: "items-center justify-center py-lg", onPress: function(): void { call1(cb, idx) }, a11yRole: "button" }, [
+        Text({ tw: "text-base " + (red ? "text-danger font-semibold" : "text-text") }, label),
+    ])
+}
+
+export dataType DrawerProps {
+    visible: bool,
+    children: []Node,
+    onDismiss: function?(): void,
+    side: string?,
+    width: int?,
+}
+/**
+ * A panel that slides in from a side, over a scrim. `side`: "left" (default) or
+ * "right"; `width` defaults to 300. Tapping the scrim, Android back, fire `onDismiss`.
+ *
+ * ```chuks
+ * Drawer({ visible: nav.get(), onDismiss: function(): void { nav.set(false) },
+ *          children: [ Heading({ text: "Menu" }), ListItem({ title: "Settings", onPress: openSettings }) ] })
+ * ```
+ */
+export function Drawer(p: DrawerProps): Node {
+    const w: int = p.width ?? 300
+    const right: bool = (p.side ?? "left") == "right"
+    // The panel is the Modal's only content, pinned to a side by its own alignment and
+    // as tall as the overlay; everything else is the scrim, and a tap there dismisses.
+    // The overlay spans the whole window, so the panel pads the safe areas itself.
+    return Modal({ visible: p.visible, position: "center", onDismiss: p.onDismiss }, [
+        Column({ tw: "bg-surface px-lg gap-md", w: w, hpct: 100, pt: safeTop() + 16, pb: safeBottom() + 16,
+                 self: right ? "end" : "start", justify: "start", align: "stretch" }, p.children),
+    ])
+}
+
+export dataType ImageViewerProps {
+    visible: bool,
+    src: string,
+    onDismiss: function?(): void,
+    a11yLabel: string?,
+}
+/**
+ * A picture, full screen, on a dark scrim. Tap anywhere to close.
+ */
+export function ImageViewer(p: ImageViewerProps): Node {
+    const vw: int = viewportWidth()
+    const vh: int = viewportHeight()
+    return Modal({ visible: p.visible, position: "center", onDismiss: p.onDismiss }, [
+        Column({ w: vw > 0 ? vw : 320, h: vh > 0 ? vh : 480, justify: "center", align: "center", onPress: p.onDismiss, bg: "000000" }, [
+            Image({ src: p.src, wpct: 100, hpct: 100, resize: "contain", a11yRole: "image", a11yLabel: p.a11yLabel ?? "" }),
+        ]),
+    ])
+}
