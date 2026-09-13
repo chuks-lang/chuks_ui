@@ -1,6 +1,6 @@
 // Overlays: things that appear over the screen and go away. Every one is controlled:
 // the parent owns `visible` and flips it in the dismiss callback.
-import { Node, Row, Column, Text, Image, Modal, Popover, ViewRef, Scroll, viewportWidth, viewportHeight, safeTop, safeBottom } from "pkg/@chuks/mobile/core/ui.chuks";
+import { Node, Row, Column, Text, Image, Modal, Popover, Sheet, ViewRef, Scroll, viewportWidth, viewportHeight, safeTop, safeBottom } from "pkg/@chuks/mobile/core/ui.chuks";
 import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
 import { Button } from "./buttons.chuks";
 import { call0, call1 } from "./tokens.chuks";
@@ -75,9 +75,10 @@ export dataType ActionSheetProps {
     cancelText: string?,            // "Cancel"
 }
 /**
- * A sheet of choices from the bottom. `onSelect` reports the tapped index; the
- * `destructive` index is red. The scrim, a swipe down, Android back and the cancel
- * row all fire `onDismiss`.
+ * A sheet of choices from the bottom, as tall as its rows. `onSelect` reports the
+ * tapped index; the `destructive` index is red. The scrim, a drag down, Android back
+ * and the cancel row all fire `onDismiss`. Built on the framework's Sheet, so it moves
+ * with the finger and settles by velocity like every other sheet.
  *
  * ```chuks
  * ActionSheet({ visible: menu.get(), title: "Photo", items: ["Save", "Share", "Delete"], destructive: 2,
@@ -92,9 +93,57 @@ export function ActionSheet(p: ActionSheetProps): Node {
     rows.push(Row({ tw: "items-center justify-center py-lg border-t border-border", onPress: p.onDismiss, a11yRole: "button" }, [
         Text({ tw: "text-base font-bold text-text" }, p.cancelText ?? "Cancel"),
     ]))
-    return Modal({ visible: p.visible, position: "bottom", onDismiss: p.onDismiss }, [
-        Column({ tw: "bg-surface rounded-t-2xl pt-sm pb-lg", justify: "start", align: "stretch" }, rows),
+    const od: any = p.onDismiss
+    return Sheet({ snapPoints: ["content"], index: p.visible ? 0 : -1, bg: tk("surface"),
+                   onChange: function(i: int): void { if (i < 0) { call0(od) } } }, [
+        Column({ tw: "pb-sm", justify: "start", align: "stretch" }, rows),
     ])
+}
+
+export dataType BottomSheetProps {
+    snapPoints: []string,           // heights, lowest first: "25%", "320", "content"
+    index: int,                     // the point it sits at; -1 closed
+    children: []Node,
+    onChange: function?(i: int): void,
+    title: string?,
+    header: Node?,                  // your own top row, instead of the title
+    closeButton: bool?,             // an X beside the title; asks for -1 through onChange
+    backdrop: bool?,                // default true; false is a persistent panel with the app under it live
+    panToClose: bool?,              // default true
+    keyboard: string?,              // "interactive" (default) | "extend" | "fillParent"
+    ref: ViewRef?,                  // for sheetSnapTo / sheetExpand / sheetCollapse / sheetClose
+    extra: string?,
+}
+/**
+ * The framework's Sheet with the kit's chrome: the theme's surface, a title row that is
+ * a header to a screen reader, an optional close button, and your content below. The
+ * parent owns `index` (-1 is closed) and stores every settle it gets from `onChange`; a
+ * Scroll or List inside hands off to the sheet on its own, and the content clears the
+ * home indicator.
+ *
+ * ```chuks
+ * BottomSheet({ snapPoints: ["40%", "90%"], index: at.get(), title: "Filters", closeButton: true,
+ *               onChange: function(i: int): void { at.set(i) },
+ *               children: [ Scroll({ grow: 1 }, [ Column({ justify: "start", align: "stretch" }, rows) ]) ] })
+ * ```
+ */
+export function BottomSheet(p: BottomSheetProps): Node {
+    var kids: []Node = []
+    if (p.header != null) { kids.push(p.header) }
+    else if (p.title != null || (p.closeButton ?? false)) {
+        var head: []Node = [ Text({ tw: "text-lg font-bold text-text grow", a11yRole: "header" }, p.title ?? "") ]
+        if (p.closeButton ?? false) {
+            const oc: any = p.onChange
+            head.push(Row({ w: 32, h: 32, tw: "items-center justify-center rounded-full bg-surface2",
+                            onPress: function(): void { call1(oc, -1) }, a11yRole: "button", a11yLabel: "Close" }, [
+                Text({ tw: "text-sm text-text" }, "✕"),
+            ]))
+        }
+        kids.push(Row({ tw: "items-center px-lg pb-sm gap-md" }, head))
+    }
+    for (var k of p.children) { kids.push(k) }
+    return Sheet({ snapPoints: p.snapPoints, index: p.index, onChange: p.onChange, backdrop: p.backdrop, panToClose: p.panToClose,
+                   keyboard: p.keyboard, ref: p.ref, bg: tk("surface"), tw: p.extra ?? "" }, kids)
 }
 function sheetRow(label: string, idx: int, red: bool, cb: any): Node {
     return Row({ tw: "items-center justify-center py-lg", onPress: function(): void { call1(cb, idx) }, a11yRole: "button" }, [

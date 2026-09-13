@@ -4,7 +4,7 @@
 import { Reconciler, Column, Text, Node, ViewRef } from "pkg/@chuks/mobile/core/ui.chuks";
 import { Button, IconButton, Link, Fab, Card, Heading, SectionHeader, Divider, Badge, Chip, Avatar,
          Input, FormControl, Checkbox, RadioGroup, Switch, Stepper, SearchBar, SegmentedControl, Tabs,
-         Alert, EmptyState, toast, toastWith, ToastHost, Tooltip, AlertDialog, ActionSheet, Drawer, ImageViewer,
+         Alert, EmptyState, toast, toastWith, ToastHost, Tooltip, AlertDialog, ActionSheet, BottomSheet, Drawer, ImageViewer,
          ListItem, Accordion, Table, Carousel, MonthView, ink, sizeHeight } from "../src/index.chuks";
 
 var PASS: int = 0
@@ -75,7 +75,17 @@ function main(): void {
     s = render(AlertDialog({ visible: true, title: "T", action: "negative", cancelText: "" }))
     check(has(s, "C|app.0|Modal") && has(s, "mvis=1;") && count(s, "ar=button;") == 1, "AlertDialog is a Modal; an empty cancelText leaves one button")
     s = render(ActionSheet({ visible: true, items: ["a", "b"], destructive: 1 }))
-    check(has(s, "mpos=bottom;") && count(s, "ar=button;") == 3, "ActionSheet is a bottom sheet with a row per item plus cancel")
+    check(has(s, "C|app.0|Sheet") && has(s, "shsnap=c;") && has(s, "shidx=0;") && count(s, "ar=button;") == 3, "ActionSheet is a content-sized Sheet with a row per item plus cancel")
+    s = render(ActionSheet({ visible: false, items: ["a"] })); check(has(s, "shidx=-1;"), "a hidden ActionSheet is a closed Sheet")
+    var closedAt: int = 99
+    const rb: Reconciler = new Reconciler(); rb.drain()
+    rb.renderRoot(Column({}, [ BottomSheet({ snapPoints: ["40%", "90%"], index: 1, title: "Filters", closeButton: true, keyboard: "extend",
+                                             onChange: function(i: int): void { closedAt = i }, children: [ Text({}, "body") ] }) ]))
+    s = rb.drain()
+    check(has(s, "C|app.0|Sheet") && has(s, "shsnap=40p,90p;") && has(s, "shidx=1;") && has(s, "shkb=extend;"), "BottomSheet is a Sheet at the app's index with its options")
+    check(has(s, "ar=header;") && has(s, "|Filters") && has(s, "al=Close;") && has(s, "|body"), "a title row that is a header, a labelled close button, then the content")
+    rb.fire("app.0.0.1"); check(closedAt == -1, "the close button asks for -1 through onChange (got " + string(closedAt) + ")")
+    rb.fireValue("app.0:change", "0"); check(closedAt == 0, "a settle reported by the host reaches onChange")
     s = render(Drawer({ visible: true, children: [ Text({}, "d") ] })); check(has(s, "self=start;") && has(s, "hpct=100;"), "Drawer pins its panel to the side, full height")
     s = render(Drawer({ visible: false, children: [ Text({}, "d") ] })); check(!has(s, "P|"), "a hidden Drawer mounts no content")
     s = render(ImageViewer({ visible: true, src: "x.png" })); check(has(s, "C|app.0.0.0|Image") && has(s, "rmode=contain;"), "ImageViewer shows the image contained")
