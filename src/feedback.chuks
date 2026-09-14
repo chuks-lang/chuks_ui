@@ -68,9 +68,10 @@ export function EmptyState(p: EmptyStateProps): Node {
 // rest. Messages queue rather than overlap. The dismiss timer runs on a coroutine, not
 // on the render loop.
 // ---------------------------------------------------------------------------
-export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any }
+export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any; id: int }
 var TOASTS: []ToastItem = []
 var TOAST_MS: int = 2600
+var TOAST_SEQ: int = 0          // each toast gets its own id, so its row keeps its identity as the queue moves
 
 /** Show a short message. Safe to call from any closure; messages queue. */
 export function toast(message: string): void { toastWith({ message: message }) }
@@ -92,7 +93,8 @@ export dataType ToastOptions {
  * ```
  */
 export function toastWith(o: ToastOptions): void {
-    TOASTS.push({ message: o.message, title: o.title ?? "", action: o.action ?? "secondary", actionLabel: o.actionLabel ?? "", onAction: o.onAction })
+    TOAST_SEQ = TOAST_SEQ + 1
+    TOASTS.push({ message: o.message, title: o.title ?? "", action: o.action ?? "secondary", actionLabel: o.actionLabel ?? "", onAction: o.onAction, id: TOAST_SEQ })
     requestRender()
     spawn expireToast()
 }
@@ -120,7 +122,8 @@ function dropToast(idx: int): void {
 }
 
 /** The surface toasts appear on. Mount once in the app shell; renders nothing when
- *  there is no message. Each toast is a polite live region. */
+ *  there is no message. Each toast is a polite live region; it slides up as it
+ *  arrives, fades as it goes, and the ones behind it move into its place. */
 export function ToastHost(): Node {
     if (TOASTS.length == 0) { return Column({ tw: "h-0" }, []) }
     var kids: []Node = []
@@ -140,5 +143,6 @@ function toastRow(t: ToastItem, idx: int): Node {
         kids.push(Text({ tw: "text-sm font-bold text-primary px-sm", a11yRole: "button",
                          onPress: function(): void { call0(cb); dropToast(idx) } }, t.actionLabel))
     }
-    return Row({ tw: "items-center gap-md pl-sm pr-md py-md rounded-xl bg-elevated border border-border shadow-sm", w: 340 }, kids)
+    return Row({ tw: "items-center gap-md pl-sm pr-md py-md rounded-xl bg-elevated border border-border shadow-sm", w: 340,
+                 entering: "slide-up 250", exiting: "fade 200", layout: "spring" }, kids).key("toast" + string(t.id))
 }

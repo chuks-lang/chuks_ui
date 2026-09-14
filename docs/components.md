@@ -449,9 +449,10 @@ toastWith({ message: "Post deleted", actionLabel: "Undo", onAction: restore, act
 ```
 
 ```chuks
-export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any }
+export dataType ToastItem { message: string; title: string; action: string; actionLabel: string; onAction: any; id: int }
 var TOASTS: []ToastItem = []
 var TOAST_MS: int = 2600
+var TOAST_SEQ: int = 0          // each toast gets its own id, so its row keeps its identity as the queue moves
 
 /** Show a short message. Safe to call from any closure; messages queue. */
 export function toast(message: string): void { toastWith({ message: message }) }
@@ -472,7 +473,8 @@ How long each message stays up, in milliseconds (default 2600).
 ### ToastHost
 
 The surface toasts appear on. Mount once in the app shell; renders nothing when
- there is no message. Each toast is a polite live region.
+ there is no message. Each toast is a polite live region; it slides up as it
+ arrives, fades as it goes, and the ones behind it move into its place.
 
 ## Overlays
 

@@ -68,7 +68,8 @@ function main(): void {
     s = render(EmptyState({ title: "None" })); check(has(s, "ar=header;"), "EmptyState's title is a header")
     toast("hello"); toastWith({ message: "gone", actionLabel: "Undo", action: "negative" })
     s = render(ToastHost())
-    check(has(s, "P|app.0.0.1.0|hello") && has(s, "av=polite;") && has(s, "Undo") && has(s, "ar=button;"), "ToastHost shows both toasts, announces them, and the action is a button")
+    check(has(s, "|hello") && has(s, "av=polite;") && has(s, "Undo") && has(s, "ar=button;"), "ToastHost shows both toasts, announces them, and the action is a button")
+    check(has(s, "C|app.0.ktoast") && has(s, "en=slide-up 250;ex=fade 200;lt=spring;"), "each toast row is keyed by its own id and slides in, fades out, and reflows")
 
     println("overlays")
     const anchor: ViewRef = new ViewRef()
