@@ -5,7 +5,8 @@ import { Reconciler, Column, Text, Node, ViewRef } from "pkg/@chuks/mobile/core/
 import { Button, IconButton, Link, Fab, Card, Heading, SectionHeader, Divider, Badge, Chip, Avatar,
          Input, FormControl, Checkbox, RadioGroup, Switch, Stepper, SearchBar, SegmentedControl, Tabs,
          Alert, EmptyState, toast, toastWith, ToastHost, Tooltip, AlertDialog, ActionSheet, BottomSheet, Drawer, ImageViewer,
-         ListItem, Accordion, Table, Carousel, MonthView, ink, sizeHeight } from "../src/index.chuks";
+         ListItem, Accordion, Table, Carousel, MonthView, SwipeableRow, CollapsingHeader, ink, sizeHeight } from "../src/index.chuks";
+import { hookBegin, runEffects, hookSweep } from "pkg/@chuks/mobile/core/state.chuks";
 
 var PASS: int = 0
 var FAIL: int = 0
@@ -98,6 +99,26 @@ function main(): void {
     s = render(MonthView({ year: 2026, month: 9, selected: "2026-09-13" }))
     check(has(s, "September 2026") && has(s, "al=2026-09-13;") && has(s, "as=sel;") && has(s, "al=Previous month;"), "MonthView names every day and the arrows, and marks the selected one")
     check(count(s, "ar=button;") == 32, "September has 30 days plus two arrows")
+
+    println("motion")
+    var opened: bool = false
+    const rm: Reconciler = new Reconciler(); rm.drain()
+    hookBegin(); rm.renderRoot(Column({}, [ SwipeableRow({ actions: [ { label: "Delete" }, { label: "Pin", action: "primary" } ],
+        onOpen: function(): void { opened = true }, children: [ Text({}, "row") ] }) ])); runEffects(); hookSweep()
+    s = rm.drain()
+    check(has(s, "MV|") && has(s, "mpx=") && has(s, "mo=tx:cl(v"), "SwipeableRow: a value, a pan feeding it, and the row's tx bound to it clamped")
+    check(has(s, ",-160,0);"), "the clamp spans the actions' width (2 x 80)")
+    check(count(s, "ar=button;") == 2 && has(s, "al=Delete;") && has(s, "al=Pin;"), "each action is a labelled button")
+    rm.fireValue("mv" + s.split("MV|")[1].split("|")[0] + ":end", "-120,-50")
+    check(opened, "past halfway the row springs open and says so")
+    rm.renderRoot(Column({}, [ Text({}, "next frame") ]))   // value ops go out with the next frame's diff
+    check(has(rm.drain(), "|sp:"), "the release goes back to the host as a spring")
+    const rc: Reconciler = new Reconciler(); rc.drain()
+    hookBegin(); rc.renderRoot(Column({}, [ CollapsingHeader({ title: "Nearby", subtitle: "12 places", children: [ Text({}, "r1") ] }) ])); runEffects(); hookSweep()
+    s = rc.drain()
+    check(has(s, "msc=") && has(s, "mo=h:-(200,cl(v"), "CollapsingHeader: the scroll feeds a value and the header's height reads it")
+    check(has(s, "mo=scale:i(v") && has(s, "mo=opacity:i(v"), "the title scales and the subtitle fades on the same value")
+    check(has(s, "ar=header;") && has(s, "|Nearby"), "the title is a header")
 
     println("")
     println("kit: " + string(PASS) + " passed, " + string(FAIL) + " failed")

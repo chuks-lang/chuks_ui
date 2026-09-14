@@ -711,3 +711,59 @@ MonthView({ year: 2026, month: 9, selected: day.get(),
            onSelect: function(iso: string): void { day.set(iso) },
            onMonth: function(y: int, m: int): void { ym.set(string(y) + "-" + string(m)) } })
 ```
+
+## Motion
+
+### SwipeableRow
+
+A row that slides left to reveal actions beneath it (delete, archive). The finger
+moves the row on the host, every frame, with no render; past halfway or on a flick
+it springs open, otherwise it springs shut. Tapping an action runs it and closes
+the row; tapping the row while open closes it. Each action is a button to a screen
+reader.
+
+```chuks
+SwipeableRow({ actions: [ { label: "Delete", onPress: remove }, { label: "Pin", action: "primary", onPress: pin } ],
+               children: [ ListItem({ title: "Blue Bottle", subtitle: "Open until 6pm" }) ] })
+```
+
+```chuks
+export dataType SwipeAction {
+    label: string,
+    action: string?,                // colours the button: negative (default), primary, secondary, positive
+    onPress: function?(): void,
+    icon: Node?,
+}
+export dataType SwipeableRowProps {
+    children: []Node,
+    actions: []SwipeAction,         // revealed from the right, in order
+    actionWidth: int?,              // per action, default 80
+    onOpen: function?(): void,
+    onClose: function?(): void,
+    extra: string?,
+}
+```
+
+### CollapsingHeader
+
+A large header that collapses as the content under it scrolls, on the host, every
+frame. Its height is a layout binding, so the content grows into the space; the
+title shrinks and the subtitle fades over the last forty points. A header to a
+screen reader.
+
+```chuks
+CollapsingHeader({ title: "Nearby", subtitle: "12 places", children: [ ...rows ] })
+```
+
+```chuks
+export dataType CollapsingHeaderProps {
+    title: string,
+    children: []Node,               // the scrolling content
+    subtitle: string?,
+    maxHeight: int?,                // default 200
+    minHeight: int?,                // default 80
+    bg: string?,                    // default the primary role
+    color: string?,                 // title colour, default the on-primary role
+    extra: string?,
+}
+```

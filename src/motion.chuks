@@ -1,0 +1,113 @@
+// Motion: components the host moves every frame, built on shared values. Nothing
+// here renders while a finger or a list is moving; the framework's motion graph
+// (core/motion.chuks) drives the views and the app hears about the outcome.
+import { Node, Row, Column, Text, Scroll, Gesture, Comp, SharedValue } from "pkg/@chuks/mobile/core/ui.chuks";
+import { useSharedValue, interpolate, clamp, sub } from "pkg/@chuks/mobile/core/motion.chuks";
+import { tk } from "pkg/@chuks/mobile/core/theme.chuks";
+import { actionColor, call0 } from "./tokens.chuks";
+
+export dataType SwipeAction {
+    label: string,
+    action: string?,                // colours the button: negative (default), primary, secondary, positive
+    onPress: function?(): void,
+    icon: Node?,
+}
+export dataType SwipeableRowProps {
+    children: []Node,
+    actions: []SwipeAction,         // revealed from the right, in order
+    actionWidth: int?,              // per action, default 80
+    onOpen: function?(): void,
+    onClose: function?(): void,
+    extra: string?,
+}
+/**
+ * A row that slides left to reveal actions beneath it (delete, archive). The finger
+ * moves the row on the host, every frame, with no render; past halfway or on a flick
+ * it springs open, otherwise it springs shut. Tapping an action runs it and closes
+ * the row; tapping the row while open closes it. Each action is a button to a screen
+ * reader.
+ *
+ * ```chuks
+ * SwipeableRow({ actions: [ { label: "Delete", onPress: remove }, { label: "Pin", action: "primary", onPress: pin } ],
+ *                children: [ ListItem({ title: "Blue Bottle", subtitle: "Open until 6pm" }) ] })
+ * ```
+ */
+export function SwipeableRow(p: SwipeableRowProps): Node {
+    return Comp(function(): Node {
+        const x: SharedValue = useSharedValue(0.0)
+        const w: int = p.actionWidth ?? 80
+        const total: float = float(w * p.actions.length)
+        const onOpen: any = p.onOpen
+        const onClose: any = p.onClose
+        x.onEnd(function(v: float, vel: float): void {
+            const open: bool = v < 0.0 - total / 2.0 || vel < -400.0
+            x.spring(open ? 0.0 - total : 0.0, vel)
+            if (open) { call0(onOpen) } else { call0(onClose) }
+        })
+        const close: function(): void = function(): void { x.spring(0.0); call0(onClose) }
+        var buttons: []Node = []
+        for (var a of p.actions) { buttons.push(swipeButton(a, w, close)) }   // built outside the loop: a closure in a loop body sees the last value
+        // The Gesture view itself is what slides: it moves out of the way, so the buttons
+        // under it get the taps meant for them.
+        return Column({ tw: "overflow-hidden " + (p.extra ?? ""), justify: "start", align: "stretch" }, [
+            Row({ abs: true, top: 0, bottom: 0, right: 0, tw: "items-stretch" }, buttons),
+            Gesture({ panX: x, tw: "bg-surface", dir: "col", align: "stretch", motion: { tx: clamp(x, 0.0 - total, 0.0) },
+                      onPress: function(): void { if (x.latest() < 0.0) { close() } } }, p.children),
+        ])
+    })
+}
+
+// One action button. A separate function so each button's closure holds its own
+// action: a const inside a loop body is one slot, and every closure made there would
+// run the last action.
+function swipeButton(a: SwipeAction, w: int, close: function(): void): Node {
+    const cb: any = a.onPress
+    var inner: []Node = []
+    if (a.icon != null) { inner.push(a.icon) }
+    inner.push(Text({ tw: "text-sm font-bold", color: tk("primaryText") }, a.label))
+    return Column({ w: w, tw: "items-center justify-center gap-xs", bg: actionColor(a.action ?? "negative"),
+                    onPress: function(): void { call0(cb); close() }, a11yRole: "button", a11yLabel: a.label }, inner)
+}
+
+export dataType CollapsingHeaderProps {
+    title: string,
+    children: []Node,               // the scrolling content
+    subtitle: string?,
+    maxHeight: int?,                // default 200
+    minHeight: int?,                // default 80
+    bg: string?,                    // default the primary role
+    color: string?,                 // title colour, default the on-primary role
+    extra: string?,
+}
+/**
+ * A large header that collapses as the content under it scrolls, on the host, every
+ * frame. Its height is a layout binding, so the content grows into the space; the
+ * title shrinks and the subtitle fades over the last forty points. A header to a
+ * screen reader.
+ *
+ * ```chuks
+ * CollapsingHeader({ title: "Nearby", subtitle: "12 places", children: [ ...rows ] })
+ * ```
+ */
+export function CollapsingHeader(p: CollapsingHeaderProps): Node {
+    return Comp(function(): Node {
+        const y: SharedValue = useSharedValue(0.0)
+        const maxH: float = float(p.maxHeight ?? 200)
+        const minH: float = float(p.minHeight ?? 80)
+        const travel: float = maxH - minH
+        const fadeFrom: float = travel > 40.0 ? travel - 40.0 : 0.0
+        var head: []Node = [
+            Text({ tw: "text-2xl font-bold", color: p.color ?? tk("primaryText"), a11yRole: "header",
+                   motion: { scale: interpolate(y, [0.0, travel], [100.0, 75.0], "clamp") } }, p.title),
+        ]
+        if (p.subtitle != null) {
+            head.push(Text({ tw: "text-sm", color: p.color ?? tk("primaryText"),
+                             motion: { opacity: interpolate(y, [fadeFrom, travel], [100.0, 0.0], "clamp") } }, p.subtitle))
+        }
+        return Column({ grow: 1, justify: "start", align: "stretch", tw: p.extra ?? "" }, [
+            Column({ bg: p.bg ?? tk("primary"), tw: "px-lg pb-md gap-xs", justify: "end", align: "start",
+                     motion: { h: sub(maxH, clamp(y, 0.0, travel)) } }, head),
+            Scroll({ grow: 1, scrollValue: y }, [ Column({ justify: "start", align: "stretch" }, p.children) ]),
+        ])
+    })
+}

@@ -6,7 +6,7 @@
 import re
 out = ["# Components\n", "One entry per component: what it is, then its props record as declared. The doc\ncomment is the one in the source, so the two cannot drift.\n"]
 groups = [("buttons", "Buttons and links"), ("surfaces", "Surfaces and labels"), ("forms", "Forms"),
-          ("feedback", "Feedback"), ("overlays", "Overlays"), ("data", "Data display")]
+          ("feedback", "Feedback"), ("overlays", "Overlays"), ("data", "Data display"), ("motion", "Motion")]
 for f, title in groups:
     s = open(f"src/{f}.chuks").read()
     out.append(f"\n## {title}\n")
