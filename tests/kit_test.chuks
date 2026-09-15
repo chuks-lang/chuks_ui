@@ -114,6 +114,24 @@ function main(): void {
     check(opened, "past halfway the row springs open and says so")
     rm.renderRoot(Column({}, [ Text({}, "next frame") ]))   // value ops go out with the next frame's diff
     check(has(rm.drain(), "|sp:"), "the release goes back to the host as a spring")
+    // A tap: opens the item while the row is closed, closes the row while it is open.
+    var tapped: int = 0
+    const rt: Reconciler = new Reconciler(); rt.drain()
+    // Under a sibling, so this row's component path differs from the one above (the
+    // cell store is shared across reconcilers in one process).
+    hookBegin(); rt.renderRoot(Column({}, [ Text({}, "above"), SwipeableRow({ actions: [ { label: "Delete" } ], onPress: function(): void { tapped = tapped + 1 },
+        children: [ Text({}, "row") ] }) ])); runEffects(); hookSweep()
+    const st: string = rt.drain()
+    const tags: []string = st.split("T|")
+    const rowTag: string = tags[tags.length - 1].split("|")[0]   // the last T| is the row itself; the first is its Delete button
+    rt.fire(rowTag)
+    check(tapped == 1, "a tap on a closed row runs onPress")
+    rt.fireValue("mv" + st.split("MV|")[1].split("|")[0] + ":end", "-120,-50")   // now open
+    rt.renderRoot(Column({}, [ Text({}, "next") ])); rt.drain()
+    rt.fire(rowTag)
+    check(tapped == 1, "a tap on an open row closes it instead")
+    rt.renderRoot(Column({}, [ Text({}, "next") ]))
+    check(has(rt.drain(), "|0|sp:"), "and the close is a spring to zero")
     const rc: Reconciler = new Reconciler(); rc.drain()
     hookBegin(); rc.renderRoot(Column({}, [ CollapsingHeader({ title: "Nearby", subtitle: "12 places", children: [ Text({}, "r1") ] }) ])); runEffects(); hookSweep()
     s = rc.drain()
