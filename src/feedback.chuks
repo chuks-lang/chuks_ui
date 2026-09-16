@@ -1,5 +1,6 @@
 // Feedback: banners, toasts, empty states.
 import { Node, Row, Column, Text, requestRender } from "pkg/@chuks/mobile/core/ui.chuks";
+import { onRender, onRenderThread } from "pkg/@chuks/mobile/core/state.chuks";
 import { time } from "std/time";
 import { InkClasses, ink, actionColor, call0 } from "./tokens.chuks";
 
@@ -93,10 +94,13 @@ export dataType ToastOptions {
  * ```
  */
 export function toastWith(o: ToastOptions): void {
+    // Safe from an async handler: the message list is the render thread's, so the
+    // push is carried there (a toast after an await is the common case).
+    if (!onRenderThread()) { onRender(function(): void { toastWith(o) }); return }
     TOAST_SEQ = TOAST_SEQ + 1
     TOASTS.push({ message: o.message, title: o.title ?? "", action: o.action ?? "secondary", actionLabel: o.actionLabel ?? "", onAction: o.onAction, id: TOAST_SEQ })
     requestRender()
-    spawn expireToast()
+    expireToast()
 }
 /** How long each message stays up, in milliseconds (default 2600). */
 export function setToastDuration(ms: int): void { TOAST_MS = ms }
@@ -107,12 +111,14 @@ export function setToastDuration(ms: int): void { TOAST_MS = ms }
 // consent to when it is added (chuks add reviews it, and records it in chuks.lock).
 async function expireToast(): Task<void> {
     time.sleep(TOAST_MS)
-    if (TOASTS.length > 0) {
-        var rest: []ToastItem = []
-        for (var i: int = 1; i < TOASTS.length; i = i + 1) { rest.push(TOASTS[i]) }
-        TOASTS = rest
-        requestRender()
-    }
+    onRender(function(): void {
+        if (TOASTS.length > 0) {
+            var rest: []ToastItem = []
+            for (var i: int = 1; i < TOASTS.length; i = i + 1) { rest.push(TOASTS[i]) }
+            TOASTS = rest
+            requestRender()
+        }
+    })
 }
 function dropToast(idx: int): void {
     var rest: []ToastItem = []
